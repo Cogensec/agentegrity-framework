@@ -8,7 +8,7 @@ Agentegrity (agent + integrity) is the discipline of building AI agents that can
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Library Version](https://img.shields.io/badge/library-v0.1.0-orange.svg)](pyproject.toml)
+[![Library Version](https://img.shields.io/badge/library-v0.2.0-green.svg)](pyproject.toml)
 [![Spec Version](https://img.shields.io/badge/spec-v1.0--draft-blue.svg)](spec/SPECIFICATION.md)
 
 ---
@@ -33,7 +33,7 @@ A self-securing agent maintains three properties simultaneously. Each property i
 | **Self-Stability** | Monitors its own behavioral drift against an established baseline and detects internal state corruption | Slow-drift attacks, memory poisoning, gradual goal redirection, identity erosion |
 | **Self-Recovery** | Detects when its integrity has been compromised and restores itself to a known-good state | Persistent compromise, undetected lateral movement, state pollution across sessions |
 
-This release (v0.1.0) ships verification for self-defense and self-stability through the adversarial and cortical layers. Self-recovery verification is on the v0.2 roadmap.
+v0.2.0 ships verification for all three capabilities: self-defense via the adversarial layer, self-stability via the cortical layer (with optional LLM-backed semantic checks), and self-recovery via the new recovery layer. v0.2.0 also ships the first framework adapter — a Claude Agent SDK integration — and an async-first evaluator pipeline that runs independent layers in parallel.
 
 ---
 
@@ -67,7 +67,7 @@ We believe in being explicit about what the library is and is not, because a sec
 
 **What it does.** It provides a Python implementation of the three-layer verification architecture defined in the [Agentegrity Specification](spec/SPECIFICATION.md). It computes integrity scores from real evaluation runs, generates cryptographically signed attestation records, builds tamper-evident attestation chains, and produces structured audit logs for governance workflows. It runs locally with zero required dependencies and never makes network calls to Cogensec or any other service. It ships with extension points for custom threat detectors, custom policy rules, and custom validators.
 
-**What it does not do.** The cortical layer's checks in v0.1.0 are pattern-based reference implementations — substring matching for prompt injection indicators, dictionary comparisons for action distribution drift, structural inspection of memory provenance. They are not LLM-backed semantic analysis. They will catch obvious cases and miss sophisticated paraphrased attacks. Production deployments should register custom detectors with domain-specific logic, and v0.2 will add LLM-backed cortical checks for users who want them out of the box. The library also does not currently include adapters for specific agent frameworks. It is framework-agnostic in the sense that it runs alongside any agent, but a developer using LangChain or the Claude Agent SDK still needs to write the plumbing to feed reasoning chains, memory reads, and tool outputs into the evaluator's context dict by hand. The first framework adapter is the next priority on the roadmap.
+**What it does not do.** The cortical layer's default checks are pattern-based reference implementations — substring matching for prompt injection indicators, dictionary comparisons for action distribution drift, structural inspection of memory provenance. They will catch obvious cases and miss sophisticated paraphrased attacks. v0.2.0 ships optional LLM-backed cortical checks (`pip install agentegrity[llm]`) that use Claude for semantic reasoning-chain validation, memory-provenance analysis, and drift classification; these run alongside the pattern-based checks and fail open on API errors. Production deployments should also register custom detectors with domain-specific logic. v0.2.0 ships a Claude Agent SDK framework adapter (`pip install agentegrity[claude]`); adapters for LangGraph, OpenAI Agents SDK, and CrewAI are on the v0.3.0 roadmap.
 
 **What it deliberately is not.** It is not a guardrail. It does not block agent actions on its own — when an action is blocked, that is the result of explicit governance policy, not inferred risk. It is not a runtime enforcement layer trying to compete with WAF-style products. It is not a hosted service. It is a measurement and verification library, and everything it does is in service of producing evidence that an agent has (or lacks) the structural properties of a self-securing system.
 
@@ -81,10 +81,13 @@ We believe in being explicit about what the library is and is not, because a sec
 pip install agentegrity
 ```
 
-For cryptographic attestation signing, install the optional `crypto` extra:
+Optional extras:
 
 ```bash
-pip install agentegrity[crypto]
+pip install "agentegrity[crypto]"   # Ed25519 attestation signing
+pip install "agentegrity[claude]"   # Claude Agent SDK adapter
+pip install "agentegrity[llm]"      # LLM-backed cortical checks (Anthropic API)
+pip install "agentegrity[all]"      # everything above
 ```
 
 ### Basic Usage
@@ -201,9 +204,9 @@ agentegrity-framework/
 
 ## Roadmap
 
-**v0.1.0 — Reference implementation (current).** Three-layer architecture, pattern-based reference checks, cryptographic attestation, custom validator and policy extension points, 45 passing tests, three working examples. This is what's in this repository today.
+**v0.1.0 — Initial release.** Three-layer architecture, pattern-based reference checks, cryptographic attestation, custom validator and policy extension points, three working examples.
 
-**v0.2.0 — Claude Agent SDK and LLM-backed checks (next 4–6 weeks).** First framework adapter targeting the Claude Agent SDK with five integration points (Harness, Tools, Sandbox, Session, Orchestration). LLM-backed cortical checks using Claude for semantic analysis of reasoning chains and memory provenance. Self-recovery verification for the third self-securing capability. Async-first evaluator pipeline.
+**v0.2.0 — Claude Agent SDK, LLM-backed checks, and self-recovery (current).** First framework adapter targeting the Claude Agent SDK with five integration points (Harness, Tools, Sandbox, Session, Orchestration). Optional LLM-backed cortical checks using Claude for semantic analysis of reasoning chains, memory provenance, and behavioral drift. Recovery integrity layer for self-recovery verification (the third self-securing capability). Async-first evaluator pipeline that runs independent layers in parallel.
 
 **v0.3.0 — Multi-framework and dashboard (next quarter).** Additional framework adapters for LangGraph, OpenAI Agents SDK, and CrewAI. Minimal web dashboard for first-run visualization. Hosted attestation registry as an optional commercial tier. Compliance report generation for EU AI Act, NIST AI RMF, and ISO 42001.
 
