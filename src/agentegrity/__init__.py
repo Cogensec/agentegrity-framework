@@ -5,8 +5,10 @@ Agentegrity defines what it means for an autonomous AI agent to be whole:
 adversarially coherent, environmentally portable, and verifiably assured.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
+from agentegrity.claude import hooks as claude_hooks
+from agentegrity.claude import report as claude_report
 from agentegrity.core.attestation import AttestationChain, AttestationRecord
 from agentegrity.core.evaluator import IntegrityEvaluator, IntegrityScore
 from agentegrity.core.monitor import IntegrityMonitor
@@ -24,4 +26,6 @@ __all__ = [
     "AttestationChain",
     "IntegrityMonitor",
     "AgentegrityClient",
+    "claude_hooks",
+    "claude_report",
 ]

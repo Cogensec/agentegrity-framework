@@ -173,6 +173,26 @@ class AgentProfile:
         }
 
     @classmethod
+    def default(cls, name: str = "claude-agent") -> AgentProfile:
+        """
+        Return a sensible generic profile for the zero-config happy path.
+
+        Defaults: tool-using agent, cloud deployment, medium risk tier,
+        single ``tool_use`` capability. Used by
+        ``agentegrity.claude.hooks()`` when no profile is supplied.
+        Power users who need anything different should construct
+        ``AgentProfile`` directly or use
+        ``AgentegrityClient.create_profile``.
+        """
+        return cls(
+            name=name,
+            agent_type=AgentType.TOOL_USING,
+            capabilities=[CAPABILITY_TOOL_USE],
+            deployment_context=DeploymentContext.CLOUD,
+            risk_tier=RiskTier.MEDIUM,
+        )
+
+    @classmethod
     def from_dict(cls, data: dict[str, Any]) -> AgentProfile:
         """Deserialize a profile from a dictionary."""
         return cls(
