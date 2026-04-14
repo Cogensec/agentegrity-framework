@@ -1,67 +1,58 @@
 """
-Example: Instrumenting a Claude Agent SDK agent with agentegrity.
+Zero-config Claude Agent SDK instrumentation.
 
-Registers agentegrity hooks at the Claude Agent SDK's extension points
-so every tool call, user prompt, and stop event is evaluated for
-structural integrity.
+The fastest way to add agentegrity to an existing Claude Agent SDK
+agent. This example runs with no API key (it dispatches mock hook
+events directly) so it works inside CI.
 
 Requirements:
-    pip install agentegrity[claude]
+    pip install "agentegrity[claude]"
 
 Run:
-    export ANTHROPIC_API_KEY=sk-ant-...
     python examples/claude_adapter.py
+
+For explicit-config usage (custom profile, custom evaluator,
+enforcement mode), see examples/claude_adapter_advanced.py.
 """
 
 from __future__ import annotations
 
 import asyncio
 
-from agentegrity.sdk.client import AgentegrityClient
+from agentegrity.claude import adapter, report, reset
 
 
 async def main() -> None:
-    client = AgentegrityClient()
-    profile = client.create_profile(
-        name="research-agent",
-        agent_type="tool_using",
-        capabilities=["web_search", "code_execution"],
-        risk_tier="medium",
-    )
-
-    # Measure-only mode: hooks observe but never block tool calls.
-    adapter = client.create_claude_adapter(profile=profile, enforce=False)
-
-    # To wire into an SDK session:
+    # Real integration is two lines — uncomment when you have a
+    # Claude SDK agent running with ANTHROPIC_API_KEY:
     #
     #     from claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions
-    #
-    #     options = ClaudeAgentOptions(hooks=adapter.create_hooks())
-    #     async with ClaudeSDKClient(options=options) as sdk:
+    #     from agentegrity.claude import hooks
+    #     async with ClaudeSDKClient(
+    #         options=ClaudeAgentOptions(hooks=hooks())
+    #     ) as sdk:
     #         await sdk.query("Research the latest LLM benchmarks")
     #         async for message in sdk.receive_response():
     #             print(message)
-    #
-    # For this standalone demo, simulate the hook events directly:
+    #     print(report())
 
-    await adapter.on_event("user_prompt_submit", {"prompt": "Research LLM benchmarks"})
-    await adapter.on_event(
+    reset()  # start with a clean session for this standalone demo
+    ad = adapter()  # lazily construct the default adapter
+    await ad.on_event("user_prompt_submit", {"prompt": "Research LLM benchmarks"})
+    await ad.on_event(
         "pre_tool_use",
         {"tool_name": "WebSearch", "tool_input": {"query": "LLM benchmarks 2026"}},
     )
-    await adapter.on_event(
+    await ad.on_event(
         "post_tool_use",
         {"tool_name": "WebSearch", "tool_response": "Found 10 results..."},
     )
-    await adapter.on_event("stop", {})
+    await ad.on_event("stop", {})
 
-    summary = adapter.get_summary()
+    summary = report()
     print("Session summary:")
     for key, value in summary.items():
         print(f"  {key}: {value}")
-
-    print(f"\nAttestation chain verified: {adapter.attestation_chain.verify_chain()}")
-    print(f"Records: {len(adapter.attestation_chain.records)}")
 
 
 if __name__ == "__main__":

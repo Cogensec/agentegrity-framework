@@ -78,35 +78,76 @@ We believe in being explicit about what the library is and is not, because a sec
 ### Installation
 
 ```bash
-pip install agentegrity
+pip install "agentegrity[claude]"
 ```
 
-Optional extras:
+Other extras: `[crypto]` (Ed25519 attestation signing), `[llm]` (LLM-backed cortical checks via the Anthropic API), `[all]` (everything).
 
-```bash
-pip install "agentegrity[crypto]"   # Ed25519 attestation signing
-pip install "agentegrity[claude]"   # Claude Agent SDK adapter
-pip install "agentegrity[llm]"      # LLM-backed cortical checks (Anthropic API)
-pip install "agentegrity[all]"      # everything above
-```
+### Instrument an existing Claude Agent SDK agent
 
-### Basic Usage
+Three lines of agentegrity, zero configuration. `hooks()` lazily builds a default adapter with a sensible `AgentProfile`, the full four-layer evaluator, and measure-only semantics (it never blocks tool calls).
 
 ```python
-from agentegrity import AgentProfile, AgentType, DeploymentContext, RiskTier
+from claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions
+from agentegrity.claude import hooks, report
+
+async with ClaudeSDKClient(options=ClaudeAgentOptions(hooks=hooks())) as sdk:
+    await sdk.query("Summarize the latest LLM safety papers")
+print(report())
+```
+
+`report()` returns the session summary — evaluation count, attestation chain length, whether the chain verifies, and enforcement mode. For a cryptographically signed audit trail, pair this with the `[crypto]` extra.
+
+Quick sanity check from the terminal:
+
+```bash
+python -m agentegrity          # version + installed adapters
+python -m agentegrity doctor   # end-to-end self-check, prints composite score
+```
+
+### Evaluate an arbitrary agent profile
+
+For agents outside the Claude SDK — or for one-off profile scoring — the high-level `AgentegrityClient` runs the full four-layer evaluation in four lines:
+
+```python
+from agentegrity import AgentegrityClient
+
+client = AgentegrityClient()
+score = client.evaluate(client.create_profile(name="my-agent"))
+print(f"{score.composite:.3f}  ({score.action})")
+```
+
+### Runtime monitoring with attestation
+
+For long-running agents, wrap actions with `@monitor.guard` to run pre- and post-execution checks and build a tamper-evident attestation chain:
+
+```python
+from agentegrity import IntegrityMonitor
+
+monitor = IntegrityMonitor(
+    profile=client.create_profile(name="my-agent"),
+    evaluator=client.evaluator,
+    threshold=0.70,
+    enable_attestation=True,
+)
+
+@monitor.guard
+async def agent_action(context=None):
+    return await agent.execute(context)
+
+result = await agent_action(context={"action": {"type": "tool_call"}})
+print(f"Records: {len(monitor.attestation_chain)}")
+print(f"Chain valid: {monitor.attestation_chain.verify_chain()}")
+```
+
+### Configuring the evaluator
+
+When the defaults aren't enough — custom thresholds, custom layer weights, custom threat detectors — drop down to `IntegrityEvaluator` directly:
+
+```python
 from agentegrity import IntegrityEvaluator
 from agentegrity.layers import AdversarialLayer, CorticalLayer, GovernanceLayer
 
-# Define an agent profile
-profile = AgentProfile(
-    name="research-assistant",
-    agent_type=AgentType.TOOL_USING,
-    capabilities=["tool_use", "memory_access", "web_access"],
-    deployment_context=DeploymentContext.CLOUD,
-    risk_tier=RiskTier.MEDIUM,
-)
-
-# Initialize the evaluator with all three layers
 evaluator = IntegrityEvaluator(
     layers=[
         AdversarialLayer(coherence_threshold=0.85),
@@ -114,42 +155,9 @@ evaluator = IntegrityEvaluator(
         GovernanceLayer(policy_set="enterprise-default"),
     ]
 )
-
-# Evaluate agent integrity
-result = evaluator.evaluate(profile, context={"action": {"type": "respond"}})
-print(f"Composite score: {result.composite}")
-print(f"Action: {result.action}")
-print(f"Properties: {result.properties.to_dict()}")
 ```
 
-### Runtime Monitoring with Attestation
-
-```python
-from agentegrity import IntegrityMonitor
-
-monitor = IntegrityMonitor(
-    profile=profile,
-    evaluator=evaluator,
-    threshold=0.70,
-    enable_attestation=True,
-)
-
-@monitor.guard
-async def agent_action(context=None):
-    # Your agent logic here
-    return await agent.execute(context)
-
-# Each call runs pre-execution and post-execution integrity checks,
-# appends a signed record to the attestation chain, and triggers
-# violation handling if the score falls below threshold.
-result = await agent_action(context={"action": {"type": "tool_call"}})
-
-# Inspect the attestation chain
-print(f"Records: {len(monitor.attestation_chain)}")
-print(f"Chain valid: {monitor.attestation_chain.verify_chain()}")
-```
-
-See [`examples/`](examples/) for more complete walkthroughs including custom threat detectors and custom policy rules.
+See [`examples/`](examples/) for walkthroughs including custom threat detectors, custom policy rules, and the full explicit-config Claude adapter flow.
 
 ---
 
