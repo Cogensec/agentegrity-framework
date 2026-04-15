@@ -78,7 +78,11 @@ We believe in being explicit about what the library is and is not, because a sec
 ### Installation
 
 ```bash
-pip install "agentegrity[claude]"
+pip install "agentegrity[claude]"          # Claude Agent SDK
+pip install "agentegrity[langchain]"       # LangChain + LangGraph
+pip install "agentegrity[openai-agents]"   # OpenAI Agents SDK
+pip install "agentegrity[crewai]"          # CrewAI
+pip install "agentegrity[google-adk]"      # Google Agent Development Kit
 ```
 
 Other extras: `[crypto]` (Ed25519 attestation signing), `[llm]` (LLM-backed cortical checks via the Anthropic API), `[all]` (everything).
@@ -97,6 +101,31 @@ print(report())
 ```
 
 `report()` returns the session summary — evaluation count, attestation chain length, whether the chain verifies, and enforcement mode. For a cryptographically signed audit trail, pair this with the `[crypto]` extra.
+
+### Instrument LangChain / LangGraph, OpenAI Agents, CrewAI, or Google ADK
+
+Same three-line shape for every supported framework:
+
+```python
+# LangChain or LangGraph (one adapter, both frameworks)
+from agentegrity.langchain import instrument_chain, instrument_graph, report
+chain = instrument_chain(my_chain); chain.invoke({"input": "..."}); print(report())
+
+# OpenAI Agents SDK
+from agents import Runner
+from agentegrity.openai_agents import run_hooks, report
+await Runner.run(agent, input="...", hooks=run_hooks()); print(report())
+
+# CrewAI
+from agentegrity.crewai import instrument, report
+instrument(); crew.kickoff(); print(report())
+
+# Google ADK
+from agentegrity.google_adk import instrument, report
+instrument(agent); print(report())
+```
+
+Every adapter uses the same default profile, evaluator, and attestation chain as the Claude path — pass `profile=`, `client=`, `enforce=True`, or `api_key=` to override.
 
 Quick sanity check from the terminal:
 

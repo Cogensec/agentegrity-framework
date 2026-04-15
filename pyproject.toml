@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agentegrity"
-version = "0.2.1"
+version = "0.3.0"
 description = "The open standard for AI agent integrity. Evaluate, enforce, and prove that autonomous agents are adversarially coherent, environmentally portable, and verifiably assured."
 readme = "README.md"
 license = "Apache-2.0"
@@ -40,10 +40,18 @@ classifiers = [
 [project.optional-dependencies]
 crypto = ["cryptography>=41.0"]
 claude = ["claude-agent-sdk>=0.1.0"]
+langchain = ["langchain-core>=0.3.0"]
+openai-agents = ["openai-agents>=0.1.0"]
+crewai = ["crewai>=0.70.0"]
+google-adk = ["google-adk>=0.3.0"]
 llm = ["anthropic>=0.40.0"]
 all = [
     "cryptography>=41.0",
     "claude-agent-sdk>=0.1.0",
+    "langchain-core>=0.3.0",
+    "openai-agents>=0.1.0",
+    "crewai>=0.70.0",
+    "google-adk>=0.3.0",
     "anthropic>=0.40.0",
 ]
 dev = [
