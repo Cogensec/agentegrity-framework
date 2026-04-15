@@ -18,20 +18,34 @@ from agentegrity.core.profile import AgentProfile
 from agentegrity.sdk.client import AgentegrityClient
 
 
-def _claude_available() -> bool:
-    return importlib.util.find_spec("claude_agent_sdk") is not None
+def _spec_available(name: str) -> bool:
+    try:
+        return importlib.util.find_spec(name) is not None
+    except ModuleNotFoundError:
+        return False
 
 
 def _llm_available() -> bool:
-    return importlib.util.find_spec("anthropic") is not None
+    return _spec_available("anthropic")
+
+
+_ADAPTERS = [
+    ("claude",        "claude_agent_sdk", "claude"),
+    ("langchain",     "langchain_core",   "langchain"),
+    ("openai_agents", "agents",           "openai-agents"),
+    ("crewai",        "crewai",           "crewai"),
+    ("google_adk",    "google.adk",       "google-adk"),
+]
 
 
 def _info() -> int:
     print(f"agentegrity {__version__}")
     print()
     print("Adapters:")
-    claude_status = "installed" if _claude_available() else "not installed"
-    print(f'  claude   [{claude_status}]  — pip install "agentegrity[claude]"')
+    for name, module, extra in _ADAPTERS:
+        status = "installed" if _spec_available(module) else "not installed"
+        pad = " " * max(0, 14 - len(name))
+        print(f'  {name}{pad}[{status}]  — pip install "agentegrity[{extra}]"')
     print()
     print("Layers shipped: adversarial, cortical, governance, recovery")
     print()

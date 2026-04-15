@@ -19,6 +19,42 @@ print(report())
 
 `hooks()` lazily builds a default adapter with a generic `AgentProfile`, the full four-layer evaluator (adversarial, cortical, governance, recovery), and measure-only semantics. It never blocks tool calls unless you pass `enforce=True`. `report()` returns a session summary — evaluation count, attestation chain length, whether the chain verifies.
 
+## 1b. Instrument LangChain / LangGraph, OpenAI Agents, CrewAI, or Google ADK
+
+Same shape, one import per framework. Pick the extra that matches your stack:
+
+```bash
+pip install "agentegrity[langchain]"     # covers LangChain + LangGraph
+pip install "agentegrity[openai-agents]"
+pip install "agentegrity[crewai]"
+pip install "agentegrity[google-adk]"
+```
+
+```python
+# LangChain
+from agentegrity.langchain import instrument_chain, report
+chain = instrument_chain(my_chain); chain.invoke({"input": "..."}); print(report())
+
+# LangGraph
+from agentegrity.langchain import instrument_graph, report
+graph = instrument_graph(my_compiled_graph); graph.invoke(state); print(report())
+
+# OpenAI Agents SDK
+from agents import Runner
+from agentegrity.openai_agents import run_hooks, report
+await Runner.run(agent, input="...", hooks=run_hooks()); print(report())
+
+# CrewAI
+from agentegrity.crewai import instrument, report
+instrument(); crew.kickoff(); print(report())
+
+# Google ADK
+from agentegrity.google_adk import instrument, report
+instrument(agent); runner.run(...); print(report())
+```
+
+Each module exposes the same `report()` / `reset()` / `adapter()` surface as `agentegrity.claude`, with `AgentProfile.default()` and the full four-layer evaluator. Pass `profile=`, `client=`, `enforce=True`, or `api_key=` to any of the entry points to override.
+
 ## 2. Score an arbitrary agent profile
 
 ```bash
