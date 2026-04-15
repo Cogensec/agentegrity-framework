@@ -195,22 +195,74 @@ class AgentegrityClient:
         enforce: bool = False,
         api_key: str | None = None,
     ) -> Any:
-        """Create a ClaudeAdapter wired to this client's evaluator.
-
-        Parameters
-        ----------
-        profile : AgentProfile
-            The agent being monitored.
-        enforce : bool
-            If True, governance block actions will deny tool calls.
-            Default False (measure-only).
-        api_key : str, optional
-            Anthropic API key for LLM-backed checks. Falls back to
-            ANTHROPIC_API_KEY.
-        """
+        """Create a ClaudeAdapter wired to this client's evaluator."""
         from agentegrity.adapters.claude import ClaudeAdapter
 
         return ClaudeAdapter(
+            profile=profile,
+            evaluator=self._evaluator,
+            enforce=enforce,
+            api_key=api_key,
+        )
+
+    def create_langchain_adapter(
+        self,
+        profile: AgentProfile,
+        enforce: bool = False,
+        api_key: str | None = None,
+    ) -> Any:
+        """Create a LangChainAdapter (also covers LangGraph) wired to this evaluator."""
+        from agentegrity.adapters.langchain import LangChainAdapter
+
+        return LangChainAdapter(
+            profile=profile,
+            evaluator=self._evaluator,
+            enforce=enforce,
+            api_key=api_key,
+        )
+
+    def create_openai_agents_adapter(
+        self,
+        profile: AgentProfile,
+        enforce: bool = False,
+        api_key: str | None = None,
+    ) -> Any:
+        """Create an OpenAIAgentsAdapter wired to this evaluator."""
+        from agentegrity.adapters.openai_agents import OpenAIAgentsAdapter
+
+        return OpenAIAgentsAdapter(
+            profile=profile,
+            evaluator=self._evaluator,
+            enforce=enforce,
+            api_key=api_key,
+        )
+
+    def create_crewai_adapter(
+        self,
+        profile: AgentProfile,
+        enforce: bool = False,
+        api_key: str | None = None,
+    ) -> Any:
+        """Create a CrewAIAdapter wired to this evaluator."""
+        from agentegrity.adapters.crewai import CrewAIAdapter
+
+        return CrewAIAdapter(
+            profile=profile,
+            evaluator=self._evaluator,
+            enforce=enforce,
+            api_key=api_key,
+        )
+
+    def create_google_adk_adapter(
+        self,
+        profile: AgentProfile,
+        enforce: bool = False,
+        api_key: str | None = None,
+    ) -> Any:
+        """Create a GoogleADKAdapter wired to this evaluator."""
+        from agentegrity.adapters.google_adk import GoogleADKAdapter
+
+        return GoogleADKAdapter(
             profile=profile,
             evaluator=self._evaluator,
             enforce=enforce,

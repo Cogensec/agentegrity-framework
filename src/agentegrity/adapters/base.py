@@ -1,80 +1,66 @@
 """
-Base adapter protocol for framework integrations.
+Base adapter protocol and shared base class for framework integrations.
 
-All framework adapters (Claude Agent SDK, LangGraph, OpenAI Agents SDK,
-CrewAI) implement this Protocol so they can be used interchangeably
-with the agentegrity evaluation pipeline.
+All framework adapters (Claude Agent SDK, LangChain/LangGraph, OpenAI
+Agents SDK, CrewAI, Google ADK) implement the ``FrameworkAdapter``
+Protocol. To avoid re-writing the event-handling / evaluation /
+attestation plumbing in every adapter, they inherit from
+``_BaseAdapter``, which owns:
+
+- ``_ContextBuffer`` accumulation
+- ``on_event`` dispatch to framework-agnostic handlers
+- ``_run_evaluation`` + attestation record append
+- ``get_collected_context`` / ``get_summary`` / ``events`` /
+  ``attestation_chain`` / ``evaluation_count`` properties
+
+Subclasses only need to override ``name`` and add framework-specific
+entry points (hook registration / callback attachment / event-bus
+subscription). The hook surface is identical across every framework
+because each one ultimately fires the same seven event types:
+
+    pre_tool_use / post_tool_use / post_tool_use_failure
+    user_prompt_submit / stop
+    subagent_start / subagent_stop
+    pre_compact
 """
 
 from __future__ import annotations
 
+import logging
+from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Protocol
 
-from agentegrity.core.evaluator import IntegrityScore
+from agentegrity.core.attestation import AttestationChain, AttestationRecord, Evidence
+from agentegrity.core.evaluator import IntegrityEvaluator, IntegrityScore
 from agentegrity.core.profile import AgentProfile
+
+logger = logging.getLogger("agentegrity.adapters")
 
 
 class FrameworkAdapter(Protocol):
-    """Protocol that all framework adapters must implement.
-
-    An adapter instruments a specific agent framework by:
-    1. Registering hooks/callbacks at framework extension points
-    2. Collecting runtime context from those hooks
-    3. Triggering integrity evaluations with the collected context
-    4. Emitting structured FrameworkEvents for audit trails
-    """
+    """Protocol that all framework adapters must implement."""
 
     @property
-    def name(self) -> str:
-        """Unique name for this adapter (e.g. 'claude', 'langgraph')."""
-        ...
+    def name(self) -> str: ...
 
     @property
-    def profile(self) -> AgentProfile:
-        """The agent profile being monitored."""
-        ...
+    def profile(self) -> AgentProfile: ...
 
     @property
-    def events(self) -> list[FrameworkEvent]:
-        """All events emitted by this adapter during the session."""
-        ...
+    def events(self) -> list[FrameworkEvent]: ...
 
-    def get_collected_context(self) -> dict[str, Any]:
-        """Return the accumulated runtime context for evaluation."""
-        ...
+    def get_collected_context(self) -> dict[str, Any]: ...
 
     async def on_event(
         self, event_type: str, event_data: dict[str, Any]
-    ) -> dict[str, Any]:
-        """Handle a framework event and return hook output.
-
-        Parameters
-        ----------
-        event_type : str
-            The type of event (e.g. "pre_tool_use", "post_tool_use").
-        event_data : dict
-            Framework-specific event data.
-
-        Returns
-        -------
-        dict
-            Hook output that the framework will process (e.g. permission
-            decisions, additional context). Return {} to allow without
-            modification.
-        """
-        ...
+    ) -> dict[str, Any]: ...
 
 
 @dataclass
 class FrameworkEvent:
-    """A structured event emitted by a framework adapter.
-
-    Every adapter interaction produces a FrameworkEvent for the audit
-    trail. Events include the raw framework data plus any evaluation
-    result that was triggered.
-    """
+    """A structured event emitted by a framework adapter."""
 
     event_type: str
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
@@ -89,8 +75,270 @@ class FrameworkEvent:
             "adapter_name": self.adapter_name,
             "data": self.data,
             "evaluation_result": (
-                self.evaluation_result.to_dict()
-                if self.evaluation_result
-                else None
+                self.evaluation_result.to_dict() if self.evaluation_result else None
             ),
+        }
+
+
+@dataclass
+class _ContextBuffer:
+    """Internal buffer accumulating runtime context from framework hooks."""
+
+    inputs: list[str] = field(default_factory=list)
+    tool_calls: list[dict[str, Any]] = field(default_factory=list)
+    tool_outputs: list[dict[str, Any]] = field(default_factory=list)
+    tool_failures: list[dict[str, Any]] = field(default_factory=list)
+    tool_usage: dict[str, int] = field(default_factory=lambda: defaultdict(int))
+    action_distribution: dict[str, int] = field(default_factory=lambda: defaultdict(int))
+    reasoning_chain: list[str] = field(default_factory=list)
+    subagents: list[dict[str, Any]] = field(default_factory=list)
+
+    def to_evaluation_context(self) -> dict[str, Any]:
+        return {
+            "input": self.inputs[-1] if self.inputs else "",
+            "tool_outputs": self.tool_outputs,
+            "reasoning_chain": self.reasoning_chain,
+            "goals": [],
+            "instructions": [],
+            "memory_reads": [],
+            "action_distribution": dict(self.action_distribution),
+            "tool_usage": dict(self.tool_usage),
+            "action": (
+                self.tool_calls[-1] if self.tool_calls else {"type": "respond"}
+            ),
+        }
+
+
+class _BaseAdapter:
+    """Shared machinery for framework adapters.
+
+    Subclasses set ``_name`` (class attribute) and may add
+    framework-specific entry points. The event-handling, evaluation,
+    and attestation layer is framework-agnostic and lives here.
+    """
+
+    _name: str = "base"
+
+    def __init__(
+        self,
+        profile: AgentProfile,
+        evaluator: IntegrityEvaluator | None = None,
+        enforce: bool = False,
+        api_key: str | None = None,
+    ) -> None:
+        self._profile = profile
+        self._enforce = enforce
+        self._api_key = api_key
+        self._buffer = _ContextBuffer()
+        self._events: list[FrameworkEvent] = []
+        self._chain = AttestationChain()
+        self._evaluation_count = 0
+
+        if evaluator is not None:
+            self._evaluator = evaluator
+        else:
+            from agentegrity.layers.adversarial import AdversarialLayer
+            from agentegrity.layers.cortical import CorticalLayer
+            from agentegrity.layers.governance import GovernanceLayer
+
+            self._evaluator = IntegrityEvaluator(
+                layers=[AdversarialLayer(), CorticalLayer(), GovernanceLayer()]
+            )
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def profile(self) -> AgentProfile:
+        return self._profile
+
+    @property
+    def events(self) -> list[FrameworkEvent]:
+        return list(self._events)
+
+    @property
+    def attestation_chain(self) -> AttestationChain:
+        return self._chain
+
+    @property
+    def evaluation_count(self) -> int:
+        return self._evaluation_count
+
+    def get_collected_context(self) -> dict[str, Any]:
+        return self._buffer.to_evaluation_context()
+
+    def _emit_event(
+        self,
+        event_type: str,
+        data: dict[str, Any],
+        score: IntegrityScore | None = None,
+    ) -> FrameworkEvent:
+        event = FrameworkEvent(
+            event_type=event_type,
+            adapter_name=self.name,
+            data=data,
+            evaluation_result=score,
+        )
+        self._events.append(event)
+        return event
+
+    def _run_evaluation(
+        self, context: dict[str, Any] | None = None
+    ) -> IntegrityScore:
+        ctx = context or self._buffer.to_evaluation_context()
+        score = self._evaluator.evaluate(self._profile, ctx)
+        self._evaluation_count += 1
+
+        record = AttestationRecord(
+            agent_id=self._profile.agent_id,
+            integrity_score=score.to_dict(),
+            layer_states={r.layer_name: r.to_dict() for r in score.layer_results},
+            evidence=[
+                Evidence(
+                    evidence_type="layer_result",
+                    source=r.layer_name,
+                    content_hash=str(hash(str(r.to_dict()))),
+                    summary=f"{r.layer_name}: {r.score:.3f} ({r.action})",
+                )
+                for r in score.layer_results
+            ],
+        )
+        self._chain.append(record)
+        return score
+
+    async def on_event(
+        self, event_type: str, event_data: dict[str, Any]
+    ) -> dict[str, Any]:
+        handlers = {
+            "pre_tool_use": self._handle_pre_tool_use,
+            "post_tool_use": self._handle_post_tool_use,
+            "post_tool_use_failure": self._handle_post_tool_use_failure,
+            "user_prompt_submit": self._handle_user_prompt_submit,
+            "stop": self._handle_stop,
+            "subagent_start": self._handle_subagent_start,
+            "subagent_stop": self._handle_subagent_stop,
+            "pre_compact": self._handle_pre_compact,
+        }
+        handler = handlers.get(event_type)
+        if handler:
+            try:
+                return await handler(event_data)
+            except Exception as exc:
+                logger.warning(
+                    "%s handler %s failed: %s",
+                    self.name,
+                    event_type,
+                    exc,
+                    exc_info=True,
+                )
+        return {}
+
+    # --- Framework-agnostic event handlers ---
+
+    async def _handle_pre_tool_use(self, data: dict[str, Any]) -> dict[str, Any]:
+        tool_name = data.get("tool_name", "")
+        tool_input = data.get("tool_input", {})
+
+        self._buffer.tool_calls.append(
+            {"tool": tool_name, "type": "tool_call", **tool_input}
+        )
+        self._buffer.tool_usage[tool_name] += 1
+        self._buffer.action_distribution["tool_call"] += 1
+
+        score = self._run_evaluation()
+        self._emit_event("pre_tool_use", data, score)
+
+        if self._enforce and score.action == "block":
+            return {
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "deny",
+                    "permissionDecisionReason": (
+                        f"Agentegrity integrity score {score.composite:.3f} "
+                        f"triggered block action"
+                    ),
+                }
+            }
+        return {}
+
+    async def _handle_post_tool_use(self, data: dict[str, Any]) -> dict[str, Any]:
+        tool_response = data.get("tool_response", "")
+        self._buffer.tool_outputs.append(
+            {"tool": data.get("tool_name", ""), "output": tool_response}
+        )
+        score = self._run_evaluation()
+        self._emit_event("post_tool_use", data, score)
+        return {}
+
+    async def _handle_post_tool_use_failure(
+        self, data: dict[str, Any]
+    ) -> dict[str, Any]:
+        self._buffer.tool_failures.append(
+            {"tool": data.get("tool_name", ""), "error": data.get("error", "")}
+        )
+        self._emit_event("post_tool_use_failure", data)
+        return {}
+
+    async def _handle_user_prompt_submit(
+        self, data: dict[str, Any]
+    ) -> dict[str, Any]:
+        prompt = data.get("prompt", data.get("user_message", ""))
+        if isinstance(prompt, str):
+            self._buffer.inputs.append(prompt)
+        self._buffer.action_distribution["user_prompt"] += 1
+
+        score = self._run_evaluation()
+        self._emit_event("user_prompt_submit", data, score)
+        return {}
+
+    async def _handle_stop(self, data: dict[str, Any]) -> dict[str, Any]:
+        score = self._run_evaluation()
+        self._emit_event("stop", data, score)
+        return {}
+
+    async def _handle_subagent_start(
+        self, data: dict[str, Any]
+    ) -> dict[str, Any]:
+        self._buffer.subagents.append(
+            {
+                "agent_id": data.get("agent_id", ""),
+                "started": datetime.now(timezone.utc).isoformat(),
+            }
+        )
+        self._emit_event("subagent_start", data)
+        return {}
+
+    async def _handle_subagent_stop(
+        self, data: dict[str, Any]
+    ) -> dict[str, Any]:
+        self._buffer.subagents.append(
+            {
+                "agent_id": data.get("agent_id", ""),
+                "stopped": datetime.now(timezone.utc).isoformat(),
+                "transcript_path": data.get("agent_transcript_path", ""),
+            }
+        )
+        self._emit_event("subagent_stop", data)
+        return {}
+
+    async def _handle_pre_compact(self, data: dict[str, Any]) -> dict[str, Any]:
+        self._emit_event(
+            "pre_compact",
+            {
+                "reasoning_chain_length": len(self._buffer.reasoning_chain),
+                "archived_chain": list(self._buffer.reasoning_chain),
+            },
+        )
+        return {}
+
+    def get_summary(self) -> dict[str, Any]:
+        return {
+            "adapter": self.name,
+            "agent_id": self._profile.agent_id,
+            "evaluations": self._evaluation_count,
+            "events": len(self._events),
+            "attestation_records": len(self._chain.records),
+            "chain_valid": self._chain.verify_chain(),
+            "enforce_mode": self._enforce,
         }
