@@ -1,0 +1,81 @@
+openapi: 3.1.0
+info:
+  title: Agentegrity Exporter HTTP API
+  version: "0.4.0"
+  description: |
+    HTTP contract that any SessionExporter backend (including the commercial
+    `agentegrity-pro` dashboard) MUST implement. The OSS `AgentegrityReporter`
+    TypeScript client and the commercial `HTTPExporter` Python exporter both
+    speak this wire format.
+
+    Three endpoints map 1:1 to the `SessionExporter` protocol:
+
+    - `POST /sessions`                 → `on_session_start`
+    - `POST /sessions/{id}/events`     → `on_event` (called N times)
+    - `POST /sessions/{id}/end`        → `on_session_end`
+
+    All payload shapes are defined by the JSON Schemas in
+    `schemas/exporter/`. This spec references those schemas by canonical URL.
+  license:
+    name: Apache-2.0
+servers:
+  - url: http://localhost:8787
+    description: Local agentegrity-pro backend (default)
+paths:
+  /sessions:
+    post:
+      summary: Open a session
+      operationId: startSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "exporter/session_start.json"
+      responses:
+        "202":
+          description: Accepted
+  /sessions/{sessionId}/events:
+    post:
+      summary: Append an event to a session
+      operationId: appendEvent
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: string
+            pattern: "^[0-9a-f]{32}$"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "exporter/event.json"
+      responses:
+        "202":
+          description: Accepted
+        "404":
+          description: Unknown session id
+  /sessions/{sessionId}/end:
+    post:
+      summary: Close a session
+      operationId: endSession
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: string
+            pattern: "^[0-9a-f]{32}$"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "exporter/session_end.json"
+      responses:
+        "202":
+          description: Accepted
+        "404":
+          description: Unknown session id

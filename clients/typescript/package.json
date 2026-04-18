@@ -1,0 +1,41 @@
+{
+  "name": "@agentegrity/client",
+  "version": "0.4.0",
+  "description": "TypeScript client for agentegrity — report agent events to any backend implementing the Agentegrity Exporter HTTP API.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --import tsx src/*.test.ts"
+  },
+  "keywords": [
+    "agentegrity",
+    "ai",
+    "agent",
+    "security",
+    "observability",
+    "integrity"
+  ],
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

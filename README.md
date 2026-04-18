@@ -153,6 +153,24 @@ graph = instrument_graph(my_graph)
 
 This is the integration point the commercial **`agentegrity-pro`** package attaches to — install it, register its `HTTPExporter`, and every session streams live to the hosted dashboard.
 
+### Non-Python agents (TypeScript / Bun / Node)
+
+The wire format is published as JSON Schema (`schemas/exporter/`) and OpenAPI 3.1 (`schemas/openapi.yaml`), and the first-party TypeScript client lives in `clients/typescript/` (`@agentegrity/client`). A Bun or Node agent can emit the same event stream the Python adapters produce:
+
+```ts
+import { AgentegrityReporter } from "@agentegrity/client";
+
+const reporter = new AgentegrityReporter({
+  baseUrl: "http://localhost:8787",
+  profile: { agent_id: "my-agent", name: "my-agent", agent_type: "tool_using",
+             capabilities: ["tool_use"], deployment_context: "cloud", risk_tier: "medium" },
+});
+await reporter.emit({ event_type: "pre_tool_use", data: { tool_name: "search" } });
+await reporter.end({ events: 1 });
+```
+
+The reporter targets any backend that implements the three endpoints in the OpenAPI spec — the commercial `agentegrity-pro` dashboard, your own FastAPI sidecar, or anything else that honors the contract. Drift between the Python `to_dict()` output and the schemas is caught in CI by `tests/test_schemas.py`.
+
 ### Evaluate an arbitrary agent profile
 
 For agents outside the Claude SDK — or for one-off profile scoring — the high-level `AgentegrityClient` runs the full four-layer evaluation in four lines:
@@ -284,7 +302,7 @@ agentegrity-framework/
 
 **v0.3.0 — Multi-framework adapters.** Four new framework adapters joining Claude — **LangChain / LangGraph**, **OpenAI Agents SDK**, **CrewAI**, and **Google Agent Development Kit** — each with the same three-line instrumentation surface. A `_BaseAdapter` shared by all five implementations means new frameworks are mostly mechanical to add going forward.
 
-**v0.4.0 — Exporter hook for the commercial dashboard (current).** OSS-side `SessionExporter` protocol + `register_exporter()` on every adapter. Session data (session_start, every evaluated event, session_end) streams as JSON-ready dicts to any subscribed exporter, fail-open so a broken sink never breaks the agent. The hosted dashboard ships separately as the commercial `agentegrity-pro` package that depends on this hook.
+**v0.4.0 — Exporter hook + cross-language contract (current).** OSS-side `SessionExporter` protocol + `register_exporter()` on every adapter. Session data (session_start, every evaluated event, session_end) streams as JSON-ready dicts to any subscribed exporter, fail-open so a broken sink never breaks the agent. The wire format is published as **JSON Schema** (`schemas/exporter/`) and **OpenAPI 3.1** (`schemas/openapi.yaml`); a first-party **TypeScript client** in `clients/typescript/` (`@agentegrity/client`) lets Bun / Node agents emit the same event stream. The commercial dashboard ships separately as `agentegrity-pro`.
 
 **v0.5.0 — More adapters and compliance output (next).** Adapters for Semantic Kernel, AutoGen, AWS Bedrock Agents. Compliance report generation for EU AI Act, NIST AI RMF, and ISO 42001. Observability exporters (OpenTelemetry, Datadog).
 
