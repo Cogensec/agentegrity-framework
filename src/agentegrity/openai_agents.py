@@ -21,7 +21,7 @@ from agentegrity.sdk.client import AgentegrityClient
 if TYPE_CHECKING:
     from agentegrity.adapters.openai_agents import OpenAIAgentsAdapter
 
-__all__ = ["adapter", "report", "reset", "run_hooks"]
+__all__ = ["adapter", "register_exporter", "report", "reset", "run_hooks"]
 
 
 _default: OpenAIAgentsAdapter | None = None
@@ -71,6 +71,11 @@ def report() -> dict[str, Any]:
             "enforce_mode": False,
         }
     return _default.get_summary()
+
+
+def register_exporter(exporter: Any) -> None:
+    """Register a :class:`SessionExporter` on the module-global adapter."""
+    _default_adapter().register_exporter(exporter)
 
 
 def reset() -> None:
