@@ -42,7 +42,7 @@ from agentegrity.sdk.client import AgentegrityClient
 if TYPE_CHECKING:
     from agentegrity.adapters.claude import ClaudeAdapter
 
-__all__ = ["hooks", "report", "reset", "adapter"]
+__all__ = ["hooks", "report", "reset", "adapter", "register_exporter"]
 
 
 _default: ClaudeAdapter | None = None
@@ -132,6 +132,15 @@ def report() -> dict[str, Any]:
             "enforce_mode": False,
         }
     return _default.get_summary()
+
+
+def register_exporter(exporter: Any) -> None:
+    """Register a :class:`SessionExporter` on the module-global adapter.
+
+    Lazily constructs the default adapter on first call so the exporter
+    receives every event from the subsequent session.
+    """
+    _default_adapter().register_exporter(exporter)
 
 
 def reset() -> None:

@@ -26,17 +26,54 @@ because each one ultimately fires the same seven event types:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Protocol
+from uuid import uuid4
 
 from agentegrity.core.attestation import AttestationChain, AttestationRecord, Evidence
 from agentegrity.core.evaluator import IntegrityEvaluator, IntegrityScore
 from agentegrity.core.profile import AgentProfile
 
 logger = logging.getLogger("agentegrity.adapters")
+
+
+class SessionExporter(Protocol):
+    """Protocol for exporters that receive live session data.
+
+    Exporters subscribe to an adapter via ``register_exporter`` and
+    receive three kinds of callback during the adapter's lifetime:
+
+    - ``on_session_start`` fires once, just before the first event is
+      emitted, with the adapter's session id, adapter name, and a
+      JSON-serializable dict snapshot of the agent profile.
+    - ``on_event`` fires for every ``FrameworkEvent`` the adapter
+      emits, with ``event.to_dict()``.
+    - ``on_session_end`` fires from ``close()`` / ``__aexit__``, with
+      the adapter's ``get_summary()``.
+
+    All methods are async. Exceptions raised by an exporter are caught
+    and logged by ``_BaseAdapter._notify_exporters`` — an exporter must
+    never be able to break the instrumented agent.
+    """
+
+    async def on_session_start(
+        self,
+        session_id: str,
+        adapter_name: str,
+        profile: dict[str, Any],
+    ) -> None: ...
+
+    async def on_event(
+        self, session_id: str, event: dict[str, Any]
+    ) -> None: ...
+
+    async def on_session_end(
+        self, session_id: str, summary: dict[str, Any]
+    ) -> None: ...
 
 
 class FrameworkAdapter(Protocol):
@@ -109,6 +146,14 @@ class _ContextBuffer:
         }
 
 
+async def _safe_await(coro: Any, method_name: str) -> None:
+    """Await a coroutine, logging and swallowing any exception."""
+    try:
+        await coro
+    except Exception as exc:
+        logger.warning("exporter %s failed: %s", method_name, exc)
+
+
 class _BaseAdapter:
     """Shared machinery for framework adapters.
 
@@ -133,6 +178,10 @@ class _BaseAdapter:
         self._events: list[FrameworkEvent] = []
         self._chain = AttestationChain()
         self._evaluation_count = 0
+        self._session_id = uuid4().hex
+        self._exporters: list[SessionExporter] = []
+        self._session_started = False
+        self._session_ended = False
 
         if evaluator is not None:
             self._evaluator = evaluator
@@ -165,6 +214,94 @@ class _BaseAdapter:
     def evaluation_count(self) -> int:
         return self._evaluation_count
 
+    @property
+    def session_id(self) -> str:
+        return self._session_id
+
+    def register_exporter(self, exporter: SessionExporter) -> None:
+        """Register a :class:`SessionExporter` to receive live session data.
+
+        Multiple exporters may be registered; each receives every event.
+        Registration is idempotent — the same exporter instance won't
+        be added twice.
+        """
+        if exporter not in self._exporters:
+            self._exporters.append(exporter)
+
+    def _notify_exporters(self, method_name: str, *args: Any) -> None:
+        """Fan out a callback to every registered exporter, fail-open.
+
+        Runs each exporter coroutine on the current event loop via
+        ``asyncio.ensure_future`` when a loop is running, otherwise via
+        ``asyncio.run``. Exporter exceptions are logged but never
+        propagated — instrumentation must not break the agent.
+        """
+        if not self._exporters:
+            return
+        for exporter in self._exporters:
+            coro_factory = getattr(exporter, method_name, None)
+            if coro_factory is None:
+                continue
+            try:
+                coro = coro_factory(*args)
+            except Exception as exc:
+                logger.warning(
+                    "exporter %s.%s raised synchronously: %s",
+                    type(exporter).__name__,
+                    method_name,
+                    exc,
+                )
+                continue
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    asyncio.ensure_future(_safe_await(coro, method_name))
+                    continue
+            except RuntimeError:
+                pass
+            try:
+                asyncio.run(_safe_await(coro, method_name))
+            except Exception as exc:
+                logger.warning(
+                    "exporter %s.%s failed: %s",
+                    type(exporter).__name__,
+                    method_name,
+                    exc,
+                )
+
+    def _maybe_start_session(self) -> None:
+        if self._session_started or not self._exporters:
+            self._session_started = True
+            return
+        self._session_started = True
+        self._notify_exporters(
+            "on_session_start",
+            self._session_id,
+            self.name,
+            self._profile.to_dict(),
+        )
+
+    def close(self) -> None:
+        """Fire ``on_session_end`` on all registered exporters.
+
+        Safe to call multiple times; subsequent calls are no-ops.
+        """
+        if self._session_ended or not self._exporters:
+            self._session_ended = True
+            return
+        self._session_ended = True
+        self._notify_exporters(
+            "on_session_end",
+            self._session_id,
+            self.get_summary(),
+        )
+
+    async def __aenter__(self) -> _BaseAdapter:
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
+        self.close()
+
     def get_collected_context(self) -> dict[str, Any]:
         return self._buffer.to_evaluation_context()
 
@@ -181,6 +318,11 @@ class _BaseAdapter:
             evaluation_result=score,
         )
         self._events.append(event)
+        if self._exporters:
+            self._maybe_start_session()
+            self._notify_exporters(
+                "on_event", self._session_id, event.to_dict()
+            )
         return event
 
     def _run_evaluation(

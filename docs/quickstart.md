@@ -55,6 +55,27 @@ instrument(agent); runner.run(...); print(report())
 
 Each module exposes the same `report()` / `reset()` / `adapter()` surface as `agentegrity.claude`, with `AgentProfile.default()` and the full four-layer evaluator. Pass `profile=`, `client=`, `enforce=True`, or `api_key=` to any of the entry points to override.
 
+## 1c. Export session data to a dashboard or external sink
+
+Every adapter exposes `register_exporter(exporter)` — subscribe anything that implements the `SessionExporter` protocol (`on_session_start`, `on_event`, `on_session_end`) and it receives live session data as JSON-ready dicts:
+
+```python
+from agentegrity.langchain import register_exporter, instrument_graph
+
+class PrintExporter:
+    async def on_session_start(self, session_id, adapter_name, profile):
+        print(f"[{adapter_name}] session {session_id} started")
+    async def on_event(self, session_id, event):
+        print(f"  {event['event_type']}")
+    async def on_session_end(self, session_id, summary):
+        print(f"[{session_id}] score={summary}")
+
+register_exporter(PrintExporter())
+graph = instrument_graph(my_graph)
+```
+
+Exporter exceptions are caught and logged — the exporter can never break the instrumented agent. For a production dashboard, install the commercial `agentegrity-pro` package and register its `HTTPExporter`.
+
 ## 2. Score an arbitrary agent profile
 
 ```bash
