@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentegrity.cogensec.com/schemas/exporter/common.json",
+  "title": "Agentegrity exporter common definitions",
+  "description": "Shared $defs reused by session_start, event, and session_end schemas.",
+  "$defs": {
+    "AgentProfile": {
+      "type": "object",
+      "required": [
+        "agent_id",
+        "name",
+        "agent_type",
+        "capabilities",
+        "deployment_context",
+        "risk_tier"
+      ],
+      "properties": {
+        "agent_id": { "type": "string" },
+        "name": { "type": "string" },
+        "agent_type": { "type": "string" },
+        "capabilities": { "type": "array", "items": { "type": "string" } },
+        "deployment_context": { "type": "string" },
+        "risk_tier": { "type": "string" },
+        "framework": { "type": ["string", "null"] },
+        "model_provider": { "type": ["string", "null"] },
+        "model_id": { "type": ["string", "null"] },
+        "metadata": { "type": "object" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": true
+    },
+    "IntegrityScore": {
+      "type": "object",
+      "required": ["composite", "properties", "layer_results"],
+      "properties": {
+        "composite": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+        "properties": {
+          "type": "object",
+          "additionalProperties": { "type": "number" }
+        },
+        "layer_results": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/LayerResult" }
+        },
+        "action": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "LayerResult": {
+      "type": "object",
+      "required": ["layer_name", "score", "passed", "action"],
+      "properties": {
+        "layer_name": { "type": "string" },
+        "score": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+        "passed": { "type": "boolean" },
+        "action": { "type": "string" },
+        "details": { "type": "object", "additionalProperties": true },
+        "latency_ms": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "FrameworkEvent": {
+      "type": "object",
+      "required": ["event_type", "timestamp", "adapter_name", "data"],
+      "properties": {
+        "event_type": {
+          "type": "string",
+          "enum": [
+            "pre_tool_use",
+            "post_tool_use",
+            "post_tool_use_failure",
+            "user_prompt_submit",
+            "stop",
+            "subagent_start",
+            "subagent_stop",
+            "pre_compact"
+          ]
+        },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "adapter_name": { "type": "string" },
+        "data": { "type": "object", "additionalProperties": true },
+        "evaluation_result": {
+          "oneOf": [
+            { "$ref": "#/$defs/IntegrityScore" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "SessionSummary": {
+      "type": "object",
+      "required": [
+        "adapter",
+        "agent_id",
+        "evaluations",
+        "events",
+        "attestation_records",
+        "chain_valid",
+        "enforce_mode"
+      ],
+      "properties": {
+        "adapter": { "type": "string" },
+        "agent_id": { "type": ["string", "null"] },
+        "evaluations": { "type": "integer", "minimum": 0 },
+        "events": { "type": "integer", "minimum": 0 },
+        "attestation_records": { "type": "integer", "minimum": 0 },
+        "chain_valid": { "type": "boolean" },
+        "enforce_mode": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

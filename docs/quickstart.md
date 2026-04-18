@@ -76,6 +76,8 @@ graph = instrument_graph(my_graph)
 
 Exporter exceptions are caught and logged — the exporter can never break the instrumented agent. For a production dashboard, install the commercial `agentegrity-pro` package and register its `HTTPExporter`.
 
+**Non-Python agents** use the same contract via `@agentegrity/client` (TypeScript, in `clients/typescript/`). The wire format is published as JSON Schema in `schemas/exporter/` and OpenAPI 3.1 in `schemas/openapi.yaml`, so any language can produce or consume events.
+
 ## 2. Score an arbitrary agent profile
 
 ```bash

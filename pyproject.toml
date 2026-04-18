@@ -59,6 +59,7 @@ dev = [
     "pytest-asyncio>=0.21",
     "ruff>=0.1",
     "mypy>=1.0",
+    "jsonschema>=4.0",
 ]
 
 [project.urls]
@@ -76,6 +77,7 @@ only-include = [
     "tests",
     "examples",
     "spec",
+    "schemas",
     "README.md",
     "LICENSE",
     "MANIFESTO.md",
