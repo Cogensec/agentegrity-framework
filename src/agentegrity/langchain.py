@@ -32,6 +32,7 @@ __all__ = [
     "callback_handler",
     "instrument_chain",
     "instrument_graph",
+    "register_exporter",
     "report",
     "reset",
 ]
@@ -116,6 +117,11 @@ def report() -> dict[str, Any]:
             "enforce_mode": False,
         }
     return _default.get_summary()
+
+
+def register_exporter(exporter: Any) -> None:
+    """Register a :class:`SessionExporter` on the module-global adapter."""
+    _default_adapter().register_exporter(exporter)
 
 
 def reset() -> None:

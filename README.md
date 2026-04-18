@@ -8,7 +8,7 @@ Agentegrity (agent + integrity) is the discipline of building AI agents that can
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Library Version](https://img.shields.io/badge/library-v0.3.0-green.svg)](pyproject.toml)
+[![Library Version](https://img.shields.io/badge/library-v0.4.0-green.svg)](pyproject.toml)
 [![Spec Version](https://img.shields.io/badge/spec-v1.0--draft-blue.svg)](spec/SPECIFICATION.md)
 
 ---
@@ -33,7 +33,7 @@ A self-securing agent maintains three properties simultaneously. Each property i
 | **Self-Stability** | Monitors its own behavioral drift against an established baseline and detects internal state corruption | Slow-drift attacks, memory poisoning, gradual goal redirection, identity erosion |
 | **Self-Recovery** | Detects when its integrity has been compromised and restores itself to a known-good state | Persistent compromise, undetected lateral movement, state pollution across sessions |
 
-v0.3.0 ships verification for all three capabilities (self-defense via the adversarial layer, self-stability via the cortical layer with optional LLM-backed semantic checks, self-recovery via the recovery layer) plus five zero-config framework adapters: **Claude Agent SDK**, **LangChain / LangGraph**, **OpenAI Agents SDK**, **CrewAI**, and **Google Agent Development Kit**. Each adapter shares the same evaluator pipeline and attestation chain — a three-line instrumentation on any of these frameworks produces the same signed audit trail.
+v0.4.0 ships verification for all three capabilities (self-defense via the adversarial layer, self-stability via the cortical layer with optional LLM-backed semantic checks, self-recovery via the recovery layer) across five zero-config framework adapters — **Claude Agent SDK**, **LangChain / LangGraph**, **OpenAI Agents SDK**, **CrewAI**, **Google Agent Development Kit** — plus a new `SessionExporter` extension point that lets any subscriber (including the commercial `agentegrity-pro` dashboard) receive live session data without touching the agent. Each adapter shares the same evaluator pipeline and attestation chain — a three-line instrumentation on any of these frameworks produces the same signed audit trail.
 
 ---
 
@@ -133,6 +133,25 @@ Quick sanity check from the terminal:
 python -m agentegrity          # version + installed adapters
 python -m agentegrity doctor   # end-to-end self-check, prints composite score
 ```
+
+### Export session data to a dashboard or external sink
+
+Every adapter exposes `register_exporter(exporter)`. Implement three async methods — `on_session_start`, `on_event`, `on_session_end` — and every evaluated event streams to your exporter as JSON-ready dicts. Exporter exceptions are caught and logged so a broken sink can never break the agent.
+
+```python
+from agentegrity.langchain import register_exporter, instrument_graph
+
+class PrintExporter:
+    async def on_session_start(self, session_id, adapter_name, profile): ...
+    async def on_event(self, session_id, event):
+        print(event["event_type"], event["evaluation_result"])
+    async def on_session_end(self, session_id, summary): ...
+
+register_exporter(PrintExporter())
+graph = instrument_graph(my_graph)
+```
+
+This is the integration point the commercial **`agentegrity-pro`** package attaches to — install it, register its `HTTPExporter`, and every session streams live to the hosted dashboard.
 
 ### Evaluate an arbitrary agent profile
 
@@ -263,9 +282,11 @@ agentegrity-framework/
 
 **v0.2.1 — Developer experience.** Zero-config `agentegrity.claude` top-level module (`hooks()` / `report()` / `reset()` — three-line instrumentation with no setup), `AgentProfile.default()` factory, `python -m agentegrity` info + `doctor` self-check CLI.
 
-**v0.3.0 — Multi-framework adapters (current).** Four new framework adapters joining Claude — **LangChain / LangGraph**, **OpenAI Agents SDK**, **CrewAI**, and **Google Agent Development Kit** — each with the same three-line instrumentation surface. A `_BaseAdapter` shared by all five implementations means new frameworks are mostly mechanical to add going forward.
+**v0.3.0 — Multi-framework adapters.** Four new framework adapters joining Claude — **LangChain / LangGraph**, **OpenAI Agents SDK**, **CrewAI**, and **Google Agent Development Kit** — each with the same three-line instrumentation surface. A `_BaseAdapter` shared by all five implementations means new frameworks are mostly mechanical to add going forward.
 
-**v0.4.0 — Dashboard and more adapters (next).** Minimal web dashboard for session visualization. Adapters for Semantic Kernel, AutoGen, AWS Bedrock Agents. Compliance report generation for EU AI Act, NIST AI RMF, and ISO 42001. Hosted attestation registry as an optional commercial tier.
+**v0.4.0 — Exporter hook for the commercial dashboard (current).** OSS-side `SessionExporter` protocol + `register_exporter()` on every adapter. Session data (session_start, every evaluated event, session_end) streams as JSON-ready dicts to any subscribed exporter, fail-open so a broken sink never breaks the agent. The hosted dashboard ships separately as the commercial `agentegrity-pro` package that depends on this hook.
+
+**v0.5.0 — More adapters and compliance output (next).** Adapters for Semantic Kernel, AutoGen, AWS Bedrock Agents. Compliance report generation for EU AI Act, NIST AI RMF, and ISO 42001. Observability exporters (OpenTelemetry, Datadog).
 
 **v1.0.0 — Stable API (when ready).** Declared stable when the public API has been unchanged for a full minor release cycle, when the library has production deployments at three or more external organizations, and when the framework has been cited in at least one peer-reviewed publication. v1.0.0 is not a date — it's a signal that adoption has happened beyond our direct influence.
 
