@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentegrity.cogensec.com/schemas/exporter/event.json",
+  "title": "SessionExporter.on_event payload",
+  "description": "Fired once per FrameworkEvent emitted by the adapter. Wire representation of the arguments to SessionExporter.on_event(session_id, event).",
+  "type": "object",
+  "required": ["session_id", "event"],
+  "properties": {
+    "session_id": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "event": { "$ref": "common.json#/$defs/FrameworkEvent" }
+  },
+  "additionalProperties": false
+}

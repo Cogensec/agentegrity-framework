@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentegrity.cogensec.com/schemas/exporter/session_end.json",
+  "title": "SessionExporter.on_session_end payload",
+  "description": "Fired once per adapter instance from close() / __aexit__. Wire representation of the arguments to SessionExporter.on_session_end(session_id, summary).",
+  "type": "object",
+  "required": ["session_id", "summary"],
+  "properties": {
+    "session_id": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "summary": { "$ref": "common.json#/$defs/SessionSummary" }
+  },
+  "additionalProperties": false
+}
