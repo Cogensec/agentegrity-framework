@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentegrity.cogensec.com/schemas/exporter/session_start.json",
+  "title": "SessionExporter.on_session_start payload",
+  "description": "Fired once per adapter instance, before the first event. Wire representation of the arguments to SessionExporter.on_session_start(session_id, adapter_name, profile).",
+  "type": "object",
+  "required": ["session_id", "adapter_name", "profile"],
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "UUID4 hex assigned to the adapter instance at construction time.",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "adapter_name": {
+      "type": "string",
+      "description": "One of claude, langchain, openai_agents, crewai, google_adk, or a custom _name set by a downstream adapter subclass."
+    },
+    "profile": {
+      "$ref": "common.json#/$defs/AgentProfile"
+    }
+  },
+  "additionalProperties": false
+}

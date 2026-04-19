@@ -8,7 +8,7 @@ Agentegrity (agent + integrity) is the discipline of building AI agents that can
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Library Version](https://img.shields.io/badge/library-v0.2.0-green.svg)](pyproject.toml)
+[![Library Version](https://img.shields.io/badge/library-v0.4.0-green.svg)](pyproject.toml)
 [![Spec Version](https://img.shields.io/badge/spec-v1.0--draft-blue.svg)](spec/SPECIFICATION.md)
 
 ---
@@ -33,7 +33,7 @@ A self-securing agent maintains three properties simultaneously. Each property i
 | **Self-Stability** | Monitors its own behavioral drift against an established baseline and detects internal state corruption | Slow-drift attacks, memory poisoning, gradual goal redirection, identity erosion |
 | **Self-Recovery** | Detects when its integrity has been compromised and restores itself to a known-good state | Persistent compromise, undetected lateral movement, state pollution across sessions |
 
-v0.2.0 ships verification for all three capabilities: self-defense via the adversarial layer, self-stability via the cortical layer (with optional LLM-backed semantic checks), and self-recovery via the new recovery layer. v0.2.0 also ships the first framework adapter — a Claude Agent SDK integration — and an async-first evaluator pipeline that runs independent layers in parallel.
+v0.4.0 ships verification for all three capabilities (self-defense via the adversarial layer, self-stability via the cortical layer with optional LLM-backed semantic checks, self-recovery via the recovery layer) across five zero-config framework adapters — **Claude Agent SDK**, **LangChain / LangGraph**, **OpenAI Agents SDK**, **CrewAI**, **Google Agent Development Kit** — plus a new `SessionExporter` extension point that lets any subscriber (including the commercial `agentegrity-pro` dashboard) receive live session data without touching the agent. Each adapter shares the same evaluator pipeline and attestation chain — a three-line instrumentation on any of these frameworks produces the same signed audit trail.
 
 ---
 
@@ -67,7 +67,7 @@ We believe in being explicit about what the library is and is not, because a sec
 
 **What it does.** It provides a Python implementation of the three-layer verification architecture defined in the [Agentegrity Specification](spec/SPECIFICATION.md). It computes integrity scores from real evaluation runs, generates cryptographically signed attestation records, builds tamper-evident attestation chains, and produces structured audit logs for governance workflows. It runs locally with zero required dependencies and never makes network calls to Cogensec or any other service. It ships with extension points for custom threat detectors, custom policy rules, and custom validators.
 
-**What it does not do.** The cortical layer's default checks are pattern-based reference implementations — substring matching for prompt injection indicators, dictionary comparisons for action distribution drift, structural inspection of memory provenance. They will catch obvious cases and miss sophisticated paraphrased attacks. v0.2.0 ships optional LLM-backed cortical checks (`pip install agentegrity[llm]`) that use Claude for semantic reasoning-chain validation, memory-provenance analysis, and drift classification; these run alongside the pattern-based checks and fail open on API errors. Production deployments should also register custom detectors with domain-specific logic. v0.2.0 ships a Claude Agent SDK framework adapter (`pip install agentegrity[claude]`); adapters for LangGraph, OpenAI Agents SDK, and CrewAI are on the v0.3.0 roadmap.
+**What it does not do.** The cortical layer's default checks are pattern-based reference implementations — substring matching for prompt injection indicators, dictionary comparisons for action distribution drift, structural inspection of memory provenance. They will catch obvious cases and miss sophisticated paraphrased attacks. v0.2.0 introduced optional LLM-backed cortical checks (`pip install agentegrity[llm]`) that use Claude for semantic reasoning-chain validation, memory-provenance analysis, and drift classification; these run alongside the pattern-based checks and fail open on API errors. Production deployments should also register custom detectors with domain-specific logic. As of v0.4.0 the library ships five framework adapters (Claude Agent SDK, LangChain / LangGraph, OpenAI Agents SDK, CrewAI, Google ADK); adapters for Semantic Kernel, AutoGen, and AWS Bedrock Agents are on the v0.5.0 roadmap.
 
 **What it deliberately is not.** It is not a guardrail. It does not block agent actions on its own — when an action is blocked, that is the result of explicit governance policy, not inferred risk. It is not a runtime enforcement layer trying to compete with WAF-style products. It is not a hosted service. It is a measurement and verification library, and everything it does is in service of producing evidence that an agent has (or lacks) the structural properties of a self-securing system.
 
@@ -133,6 +133,43 @@ Quick sanity check from the terminal:
 python -m agentegrity          # version + installed adapters
 python -m agentegrity doctor   # end-to-end self-check, prints composite score
 ```
+
+### Export session data to a dashboard or external sink
+
+Every adapter exposes `register_exporter(exporter)`. Implement three async methods — `on_session_start`, `on_event`, `on_session_end` — and every evaluated event streams to your exporter as JSON-ready dicts. Exporter exceptions are caught and logged so a broken sink can never break the agent.
+
+```python
+from agentegrity.langchain import register_exporter, instrument_graph
+
+class PrintExporter:
+    async def on_session_start(self, session_id, adapter_name, profile): ...
+    async def on_event(self, session_id, event):
+        print(event["event_type"], event["evaluation_result"])
+    async def on_session_end(self, session_id, summary): ...
+
+register_exporter(PrintExporter())
+graph = instrument_graph(my_graph)
+```
+
+This is the integration point the commercial **`agentegrity-pro`** package attaches to — install it, register its `HTTPExporter`, and every session streams live to the hosted dashboard.
+
+### Non-Python agents (TypeScript / Bun / Node)
+
+The wire format is published as JSON Schema (`schemas/exporter/`) and OpenAPI 3.1 (`schemas/openapi.yaml`), and the first-party TypeScript client lives in `clients/typescript/` (`@agentegrity/client`). A Bun or Node agent can emit the same event stream the Python adapters produce:
+
+```ts
+import { AgentegrityReporter } from "@agentegrity/client";
+
+const reporter = new AgentegrityReporter({
+  baseUrl: "http://localhost:8787",
+  profile: { agent_id: "my-agent", name: "my-agent", agent_type: "tool_using",
+             capabilities: ["tool_use"], deployment_context: "cloud", risk_tier: "medium" },
+});
+await reporter.emit({ event_type: "pre_tool_use", data: { tool_name: "search" } });
+await reporter.end({ events: 1 });
+```
+
+The reporter targets any backend that implements the three endpoints in the OpenAPI spec — the commercial `agentegrity-pro` dashboard, your own FastAPI sidecar, or anything else that honors the contract. Drift between the Python `to_dict()` output and the schemas is caught in CI by `tests/test_schemas.py`.
 
 ### Evaluate an arbitrary agent profile
 
@@ -213,25 +250,56 @@ agentegrity-framework/
 │
 ├── src/agentegrity/             # Python Reference Implementation
 │   ├── __init__.py
+│   ├── __main__.py              # `python -m agentegrity` + doctor CLI
+│   ├── claude.py                # Zero-config Claude Agent SDK surface
+│   ├── langchain.py             # Zero-config LangChain + LangGraph surface
+│   ├── openai_agents.py         # Zero-config OpenAI Agents SDK surface
+│   ├── crewai.py                # Zero-config CrewAI surface
+│   ├── google_adk.py            # Zero-config Google ADK surface
 │   ├── core/                    # Core abstractions
-│   │   ├── profile.py           # AgentProfile
+│   │   ├── profile.py           # AgentProfile (+ .default() factory)
 │   │   ├── evaluator.py         # IntegrityEvaluator, PropertyWeights
 │   │   ├── attestation.py       # AttestationRecord, AttestationChain
 │   │   └── monitor.py           # IntegrityMonitor with @guard decorator
 │   ├── layers/                  # Layer implementations
 │   │   ├── adversarial.py       # AdversarialLayer (self-defense)
 │   │   ├── cortical.py          # CorticalLayer (self-stability)
-│   │   └── governance.py        # GovernanceLayer (policy + audit)
+│   │   ├── governance.py        # GovernanceLayer (policy + audit)
+│   │   └── recovery.py          # RecoveryLayer (self-recovery)
+│   ├── adapters/                # Framework integrations
+│   │   ├── base.py              # _BaseAdapter + FrameworkAdapter Protocol
+│   │   ├── claude.py            # ClaudeAdapter
+│   │   ├── langchain.py         # LangChainAdapter (covers LangGraph)
+│   │   ├── openai_agents.py     # OpenAIAgentsAdapter
+│   │   ├── crewai.py            # CrewAIAdapter
+│   │   └── google_adk.py        # GoogleADKAdapter
 │   └── sdk/                     # High-level convenience wrapper
 │       └── client.py            # AgentegrityClient
 │
-├── tests/                       # Test suite (45 tests, all passing)
-│   ├── test_profile.py
-│   ├── test_evaluator.py
-│   ├── test_attestation.py
-│   └── test_monitor.py
+├── schemas/                     # Cross-language wire contract
+│   ├── exporter/                # JSON Schema (Draft 2020-12)
+│   │   ├── common.json          # Shared $defs (profile, event, score)
+│   │   ├── session_start.json
+│   │   ├── event.json
+│   │   └── session_end.json
+│   └── openapi.yaml             # OpenAPI 3.1 spec for exporter endpoints
+│
+├── clients/
+│   └── typescript/              # @agentegrity/client — TS/Bun/Node reporter
+│       ├── src/                 # AgentegrityReporter + types
+│       ├── examples/            # basic.ts wiring example
+│       ├── package.json
+│       └── README.md
+│
+├── tests/                       # Test suite (145 tests, all passing)
 │
 └── examples/                    # Usage examples
+    ├── claude_adapter.py
+    ├── claude_adapter_advanced.py
+    ├── langchain_adapter.py
+    ├── openai_agents_adapter.py
+    ├── crewai_adapter.py
+    ├── google_adk_adapter.py
     ├── basic_evaluation.py
     ├── runtime_monitoring.py
     └── custom_validator.py
@@ -243,9 +311,15 @@ agentegrity-framework/
 
 **v0.1.0 — Initial release.** Three-layer architecture, pattern-based reference checks, cryptographic attestation, custom validator and policy extension points, three working examples.
 
-**v0.2.0 — Claude Agent SDK, LLM-backed checks, and self-recovery (current).** First framework adapter targeting the Claude Agent SDK with five integration points (Harness, Tools, Sandbox, Session, Orchestration). Optional LLM-backed cortical checks using Claude for semantic analysis of reasoning chains, memory provenance, and behavioral drift. Recovery integrity layer for self-recovery verification (the third self-securing capability). Async-first evaluator pipeline that runs independent layers in parallel.
+**v0.2.0 — Claude Agent SDK, LLM-backed checks, and self-recovery.** First framework adapter targeting the Claude Agent SDK with five integration points (Harness, Tools, Sandbox, Session, Orchestration). Optional LLM-backed cortical checks using Claude for semantic analysis of reasoning chains, memory provenance, and behavioral drift. Recovery integrity layer for self-recovery verification. Async-first evaluator pipeline that runs independent layers in parallel.
 
-**v0.3.0 — Multi-framework and dashboard (next quarter).** Additional framework adapters for LangGraph, OpenAI Agents SDK, and CrewAI. Minimal web dashboard for first-run visualization. Hosted attestation registry as an optional commercial tier. Compliance report generation for EU AI Act, NIST AI RMF, and ISO 42001.
+**v0.2.1 — Developer experience.** Zero-config `agentegrity.claude` top-level module (`hooks()` / `report()` / `reset()` — three-line instrumentation with no setup), `AgentProfile.default()` factory, `python -m agentegrity` info + `doctor` self-check CLI.
+
+**v0.3.0 — Multi-framework adapters.** Four new framework adapters joining Claude — **LangChain / LangGraph**, **OpenAI Agents SDK**, **CrewAI**, and **Google Agent Development Kit** — each with the same three-line instrumentation surface. A `_BaseAdapter` shared by all five implementations means new frameworks are mostly mechanical to add going forward.
+
+**v0.4.0 — Exporter hook + cross-language contract (current).** OSS-side `SessionExporter` protocol + `register_exporter()` on every adapter. Session data (session_start, every evaluated event, session_end) streams as JSON-ready dicts to any subscribed exporter, fail-open so a broken sink never breaks the agent. The wire format is published as **JSON Schema** (`schemas/exporter/`) and **OpenAPI 3.1** (`schemas/openapi.yaml`); a first-party **TypeScript client** in `clients/typescript/` (`@agentegrity/client`) lets Bun / Node agents emit the same event stream. The commercial dashboard ships separately as `agentegrity-pro`.
+
+**v0.5.0 — More adapters and compliance output (next).** Adapters for Semantic Kernel, AutoGen, AWS Bedrock Agents. Compliance report generation for EU AI Act, NIST AI RMF, and ISO 42001. Observability exporters (OpenTelemetry, Datadog).
 
 **v1.0.0 — Stable API (when ready).** Declared stable when the public API has been unchanged for a full minor release cycle, when the library has production deployments at three or more external organizations, and when the framework has been cited in at least one peer-reviewed publication. v1.0.0 is not a date — it's a signal that adoption has happened beyond our direct influence.
 
@@ -284,18 +358,14 @@ agentegrity-framework/
 
 We welcome contributions. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-Priority areas for v0.2:
-- Claude Agent SDK framework adapter
-- LLM-backed cortical check implementations
-- Self-recovery verification
-- Async evaluator pipeline
-- Compliance report generation
-
-Priority areas for v0.3 and beyond:
-- Additional framework adapters (LangGraph, OpenAI Agents SDK, CrewAI)
+Priority areas for v0.4 and beyond:
+- Additional framework adapters (Semantic Kernel, AutoGen, AWS Bedrock Agents, Agno)
+- Minimal web dashboard for session visualization
+- Compliance report generation (EU AI Act, NIST AI RMF, ISO 42001)
 - Domain-specific validator libraries (healthcare, finance, embodied)
 - Language ports (TypeScript, Go, Rust)
 - Formal verification of layer interactions
+- Cross-framework session merging (multiple adapters sharing one attestation chain)
 
 ---
 
