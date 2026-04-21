@@ -1,0 +1,41 @@
+{
+  "name": "@agentegrity/openai-agents",
+  "version": "0.5.0",
+  "description": "Zero-config agentegrity adapter for the OpenAI Agents JS SDK (@openai/agents). Mirrors the Python agentegrity.openai_agents module.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": { ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" } },
+  "files": ["dist", "src", "README.md"],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --import tsx src/*.test.ts",
+    "clean": "rm -rf dist"
+  },
+  "keywords": ["agentegrity", "openai", "openai-agents", "agent", "security", "observability"],
+  "dependencies": {
+    "@agentegrity/client": "workspace:*"
+  },
+  "peerDependencies": {
+    "@openai/agents": ">=0.0.1"
+  },
+  "peerDependenciesMeta": {
+    "@openai/agents": { "optional": true }
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "tsx": "^4.7.0",
+    "@types/node": "^20.0.0"
+  },
+  "engines": { "node": ">=18" },
+  "homepage": "https://github.com/requie/agentegrity-framework/tree/main/clients/typescript/packages/openai-agents",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/requie/agentegrity-framework.git",
+    "directory": "clients/typescript/packages/openai-agents"
+  },
+  "bugs": { "url": "https://github.com/requie/agentegrity-framework/issues" }
+}
