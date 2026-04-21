@@ -1,0 +1,56 @@
+{
+  "name": "@agentegrity/client",
+  "version": "0.5.0",
+  "description": "TypeScript client for agentegrity — report agent events to any backend implementing the Agentegrity Exporter HTTP API.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./default": {
+      "import": "./dist/default.js",
+      "types": "./dist/default.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --import tsx src/*.test.ts",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "agentegrity",
+    "ai",
+    "agent",
+    "security",
+    "observability",
+    "integrity"
+  ],
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.0.0",
+    "tsx": "^4.7.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "homepage": "https://github.com/requie/agentegrity-framework/tree/main/clients/typescript/packages/client",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/requie/agentegrity-framework.git",
+    "directory": "clients/typescript/packages/client"
+  },
+  "bugs": {
+    "url": "https://github.com/requie/agentegrity-framework/issues"
+  }
+}

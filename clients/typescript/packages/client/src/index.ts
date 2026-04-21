@@ -8,6 +8,14 @@
 
 export { AgentegrityReporter } from "./reporter.js";
 export type { ReporterOptions } from "./reporter.js";
+export {
+  createDefaultAdapter,
+} from "./default.js";
+export type {
+  AdapterConfig,
+  DefaultAdapter,
+  EmittableEvent,
+} from "./default.js";
 export type {
   AgentProfile,
   EventPayload,
@@ -16,6 +24,7 @@ export type {
   IntegrityScore,
   LayerResult,
   SessionEndPayload,
+  SessionExporter,
   SessionStartPayload,
   SessionSummary,
 } from "./types.js";

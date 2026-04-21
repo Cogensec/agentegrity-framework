@@ -80,3 +80,22 @@ export interface SessionEndPayload {
   session_id: string;
   summary: SessionSummary;
 }
+
+/**
+ * SessionExporter — TypeScript mirror of the Python `SessionExporter`
+ * Protocol. Implement any subset of the three hooks; missing hooks are
+ * skipped. Errors thrown from any hook are caught and logged — a broken
+ * exporter must never break the instrumented agent.
+ */
+export interface SessionExporter {
+  on_session_start?(
+    session_id: string,
+    adapter_name: string,
+    profile: AgentProfile,
+  ): void | Promise<void>;
+  on_event?(session_id: string, event: FrameworkEvent): void | Promise<void>;
+  on_session_end?(
+    session_id: string,
+    summary: SessionSummary,
+  ): void | Promise<void>;
+}
