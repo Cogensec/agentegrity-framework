@@ -155,21 +155,49 @@ This is the integration point the commercial **`agentegrity-pro`** package attac
 
 ### Non-Python agents (TypeScript / Bun / Node)
 
-The wire format is published as JSON Schema (`schemas/exporter/`) and OpenAPI 3.1 (`schemas/openapi.yaml`), and the first-party TypeScript client lives in `clients/typescript/` (`@agentegrity/client`). A Bun or Node agent can emit the same event stream the Python adapters produce:
+TypeScript agents get the same **2–3 line zero-config** DX as the Python adapters. Install the adapter that matches your framework; each one sets `AGENTEGRITY_URL` / `AGENTEGRITY_TOKEN` from env and streams events through any `SessionExporter` you register.
 
+**Claude Agent SDK:**
 ```ts
-import { AgentegrityReporter } from "@agentegrity/client";
-
-const reporter = new AgentegrityReporter({
-  baseUrl: "http://localhost:8787",
-  profile: { agent_id: "my-agent", name: "my-agent", agent_type: "tool_using",
-             capabilities: ["tool_use"], deployment_context: "cloud", risk_tier: "medium" },
-});
-await reporter.emit({ event_type: "pre_tool_use", data: { tool_name: "search" } });
-await reporter.end({ events: 1 });
+import { query } from "@anthropic-ai/claude-agent-sdk";
+import { hooks } from "@agentegrity/claude-sdk";
+await query({ prompt: "hi", options: { hooks: hooks() } });
 ```
 
-The reporter targets any backend that implements the three endpoints in the OpenAPI spec — the commercial `agentegrity-pro` dashboard, your own FastAPI sidecar, or anything else that honors the contract. Drift between the Python `to_dict()` output and the schemas is caught in CI by `tests/test_schemas.py`.
+**LangChain JS:**
+```ts
+import { ChatAnthropic } from "@langchain/anthropic";
+import { instrument } from "@agentegrity/langchain";
+await new ChatAnthropic({ callbacks: [instrument()] }).invoke("hi");
+```
+
+**OpenAI Agents SDK:**
+```ts
+import { Agent, run } from "@openai/agents";
+import { runHooks } from "@agentegrity/openai-agents";
+await run(agent, "hi", { hooks: runHooks() });
+```
+
+**CrewAI JS:**
+```ts
+import { instrument } from "@agentegrity/crewai";
+instrument().attach(crew.events);
+```
+
+**Google ADK:**
+```ts
+import { instrument } from "@agentegrity/google-adk";
+const close = instrument(agent);
+```
+
+**Vercel AI SDK** (TypeScript-native — no Python equivalent):
+```ts
+import { streamText } from "ai";
+import { instrument } from "@agentegrity/vercel-ai";
+await streamText({ model, prompt: "hi", experimental_telemetry: instrument() });
+```
+
+Each adapter re-exports `report()`, `reset()`, and `registerExporter()` for the same flow you get in Python. The low-level `@agentegrity/client` reporter is still available for custom frameworks, and the wire format is published as JSON Schema (`schemas/exporter/`) and OpenAPI 3.1 (`schemas/openapi.yaml`). Drift between the Python `to_dict()` output and the schemas is caught in CI by `tests/test_schemas.py`.
 
 ### Evaluate an arbitrary agent profile
 

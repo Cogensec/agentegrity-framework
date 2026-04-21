@@ -76,7 +76,18 @@ graph = instrument_graph(my_graph)
 
 Exporter exceptions are caught and logged — the exporter can never break the instrumented agent. For a production dashboard, install the commercial `agentegrity-pro` package and register its `HTTPExporter`.
 
-**Non-Python agents** use the same contract via `@agentegrity/client` (TypeScript, in `clients/typescript/`). The wire format is published as JSON Schema in `schemas/exporter/` and OpenAPI 3.1 in `schemas/openapi.yaml`, so any language can produce or consume events.
+**Non-Python agents** use the same contract via one of the six TypeScript adapters, each shipping a 2–3 line zero-config enable. Pick the one that matches your framework:
+
+```bash
+npm i @agentegrity/claude-sdk      # Claude Agent SDK — options.hooks = hooks()
+npm i @agentegrity/langchain       # LangChain JS — callbacks: [instrument()]
+npm i @agentegrity/openai-agents   # OpenAI Agents SDK — run(..., { hooks: runHooks() })
+npm i @agentegrity/crewai          # CrewAI JS — instrument().attach(crew.events)
+npm i @agentegrity/google-adk      # Google ADK — instrument(agent)
+npm i @agentegrity/vercel-ai       # Vercel AI SDK — experimental_telemetry: instrument()
+```
+
+Each re-exports `registerExporter()`, `report()`, and `reset()` for the same fan-out contract as the Python adapters. The low-level `@agentegrity/client` reporter is still available for custom frameworks. The wire format is published as JSON Schema in `schemas/exporter/` and OpenAPI 3.1 in `schemas/openapi.yaml`, so any language can produce or consume events.
 
 ## 2. Score an arbitrary agent profile
 

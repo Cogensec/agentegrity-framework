@@ -1,0 +1,46 @@
+{
+  "name": "@agentegrity/claude-sdk",
+  "version": "0.5.0",
+  "description": "Zero-config agentegrity adapter for the Claude Agent SDK (@anthropic-ai/claude-agent-sdk). Mirrors the Python agentegrity.claude module.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": ["dist", "src", "README.md"],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --import tsx src/*.test.ts",
+    "clean": "rm -rf dist"
+  },
+  "keywords": ["agentegrity", "claude", "anthropic", "agent", "security", "observability"],
+  "dependencies": {
+    "@agentegrity/client": "workspace:*"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/claude-agent-sdk": ">=0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@anthropic-ai/claude-agent-sdk": { "optional": true }
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "tsx": "^4.7.0",
+    "@types/node": "^20.0.0"
+  },
+  "engines": { "node": ">=18" },
+  "homepage": "https://github.com/requie/agentegrity-framework/tree/main/clients/typescript/packages/claude-sdk",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/requie/agentegrity-framework.git",
+    "directory": "clients/typescript/packages/claude-sdk"
+  },
+  "bugs": { "url": "https://github.com/requie/agentegrity-framework/issues" }
+}
