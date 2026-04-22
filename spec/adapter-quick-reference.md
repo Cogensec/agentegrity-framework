@@ -2,7 +2,7 @@
 
 Every first-party agentegrity adapter follows the same shape: zero-config by default, import one function, wire it into the framework's callback / hook / telemetry slot, and events stream through any `SessionExporter` you register.
 
-As of v0.5.0 there are **eleven adapters** across two languages.
+As of v0.5.2 there are **eleven adapters** across two languages.
 
 ## Python (five)
 
