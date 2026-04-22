@@ -1,6 +1,6 @@
 {
   "name": "@agentegrity/workspace",
-  "version": "0.5.0",
+  "version": "0.5.2",
   "private": true,
   "description": "Workspace root for @agentegrity/* TypeScript packages.",
   "license": "Apache-2.0",
