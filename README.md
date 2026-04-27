@@ -408,7 +408,7 @@ If you use the Agentegrity Framework in research or production, please cite:
   title={The Agentegrity Framework: Building and Verifying Self-Securing Autonomous AI Agents},
   author={Cogensec Research},
   year={2026},
-  url={https://github.com/requie/agentegrity-framework}
+  url={https://github.com/cogensec/agentegrity-framework}
 }
 ```
 

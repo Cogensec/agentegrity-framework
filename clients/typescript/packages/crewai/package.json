@@ -25,11 +25,11 @@
     "@types/node": "^20.0.0"
   },
   "engines": { "node": ">=18" },
-  "homepage": "https://github.com/requie/agentegrity-framework/tree/main/clients/typescript/packages/crewai",
+  "homepage": "https://github.com/cogensec/agentegrity-framework/tree/main/clients/typescript/packages/crewai",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/requie/agentegrity-framework.git",
+    "url": "git+https://github.com/cogensec/agentegrity-framework.git",
     "directory": "clients/typescript/packages/crewai"
   },
-  "bugs": { "url": "https://github.com/requie/agentegrity-framework/issues" }
+  "bugs": { "url": "https://github.com/cogensec/agentegrity-framework/issues" }
 }
