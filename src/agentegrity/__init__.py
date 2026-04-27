@@ -5,7 +5,7 @@ Agentegrity defines what it means for an autonomous AI agent to be whole:
 adversarially coherent, environmentally portable, and verifiably assured.
 """
 
-__version__ = "0.5.2"
+__version__ = "0.5.3"
 
 from agentegrity.adapters.base import FrameworkEvent, SessionExporter
 from agentegrity.claude import hooks as claude_hooks

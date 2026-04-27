@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Agentegrity Exporter HTTP API
-  version: "0.5.2"
+  version: "0.5.3"
   description: |
     HTTP contract that any SessionExporter backend (including the commercial
     `agentegrity-pro` dashboard) MUST implement. The OSS `AgentegrityReporter`
