@@ -31,8 +31,8 @@ Thank you for your interest in contributing to the Agentegrity Framework. This p
 
 ```bash
 # Clone the repo
-git clone https://github.com/requie/Agentegrity-Framework.git
-cd Agentegrity-Framework
+git clone https://github.com/cogensec/agentegrity-framework.git
+cd agentegrity-framework
 
 # Create a virtual environment
 python -m venv .venv

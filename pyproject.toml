@@ -63,10 +63,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/requie/agentegrity-framework"
-Documentation = "https://github.com/requie/agentegrity-framework/tree/main/spec"
-Repository = "https://github.com/requie/agentegrity-framework"
-Issues = "https://github.com/requie/agentegrity-framework/issues"
+Homepage = "https://github.com/cogensec/agentegrity-framework"
+Documentation = "https://github.com/cogensec/agentegrity-framework/tree/main/spec"
+Repository = "https://github.com/cogensec/agentegrity-framework"
+Issues = "https://github.com/cogensec/agentegrity-framework/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/agentegrity"]
