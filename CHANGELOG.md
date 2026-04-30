@@ -18,6 +18,23 @@ in beta until the v1.0 stability criteria documented in
 - **`PropertyWeights` defaults rebalanced** to give recovery a non-zero
   share: AC=0.35, EP=0.20, VA=0.30, RI=0.15 (was AC=0.40, EP=0.25,
   VA=0.35, RI=0.0).
+- **Adversarial detection upgraded from substring matching to a regex
+  taxonomy.** `AdversarialLayer` ships 21 default regex patterns
+  organized into six attack families (prompt_injection, jailbreak,
+  role_confusion, system_prompt_extraction, data_exfiltration,
+  prompt_obfuscation). Detection now scans direct input *plus* memory
+  reads *plus* tool-output content, and per-pattern severity/confidence
+  drives the aggregate `ThreatAssessment`. Multiple matches in the same
+  channel collapse to one entry per `threat_type` with `indicators`
+  listing every pattern that fired. The taxonomy moves the layer from
+  🟡 *Reference* to ✅ *Hardened* on the STATUS matrix.
+- **Cortical drift detector hardened.** Replaced the asymmetric forward
+  KL approximation with Jensen-Shannon distance under Laplace
+  smoothing — symmetric, bounded in [0, 1], and a proper metric. New
+  `min_drift_samples` constructor argument (default 20) guards against
+  flagging drift on tiny sample sizes; below threshold the dimension
+  surfaces an `__insufficient_samples` marker instead of a verdict. The
+  `_kl_divergence_approx` private name is retained as an alias.
 - README, MANIFESTO, spec, and glossary updated to describe four layers
   consistently. New `spec/layers/recovery-layer.md` normative spec.
 
@@ -32,16 +49,23 @@ in beta until the v1.0 stability criteria documented in
   drift between `pyproject.toml`, `src/agentegrity/__init__.py`, the
   README shields badge, and present-tense version claims in README
   prose.
+- New public `DetectorPattern` dataclass + `default_detector_patterns()`
+  factory. Custom patterns can be appended via
+  `AdversarialLayer(extra_patterns=[...])` or fully replace the
+  taxonomy via `AdversarialLayer(patterns=[...])`.
+- 33 new tests covering the regex taxonomy (`test_adversarial_detectors.py`)
+  and the JS-distance drift metric (`test_drift.py`) — symmetry,
+  monotonicity, sample-size guards, and aggregation behaviour.
 
 ### Migration
-Callers that constructed `PropertyWeights` with three keyword arguments
-will now hit the validator (defaults sum to 1.0, but the new RI=0.15
-default puts the legacy AC/EP/VA-only triple over 1.0). Either:
-
-  1. Pass `recovery_integrity=0.0` explicitly to keep three-property
-     weighting, or
-  2. Adopt the new default by omitting the `weights=` argument
-     entirely.
+- Callers that constructed `PropertyWeights` with three keyword
+  arguments will now hit the validator. Pass
+  `recovery_integrity=0.0` explicitly to keep three-property weighting,
+  or omit the `weights=` argument and adopt the new default.
+- Callers that rely on undocumented behaviour of `_kl_divergence_approx`
+  will see *different numeric values* (the new function returns JS
+  distance, not forward KL). Public APIs are unchanged. Drift
+  thresholds calibrated against the old metric should be revalidated.
 
 ## [0.5.3] - 2026-04-29
 
