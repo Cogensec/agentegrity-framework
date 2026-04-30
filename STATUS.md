@@ -37,8 +37,8 @@ this document is the operational version of it.
 
 | Layer              | Default? | Status | Detection Quality |
 |--------------------|:--------:|:------:|-------------------|
-| `AdversarialLayer` |   ✅     |   🟡   | Substring matching for prompt-injection indicators; tool-output sanity check. Phase 2 plan: regex taxonomies + embedding-similarity + LLM-backed semantic classifier. |
-| `CorticalLayer`    |   ✅     |   🟡   | Dictionary-based action-distribution drift; structural memory-provenance check; structural reasoning conflict detection. Phase 2 plan: KL-divergence drift, semantic reasoning checks via `cortical_llm`. |
+| `AdversarialLayer` |   ✅     |   ✅   | Regex-pattern taxonomy across six families (prompt_injection, jailbreak, role_confusion, system_prompt_extraction, data_exfiltration, prompt_obfuscation). 21 default patterns scan direct input + memory reads + tool outputs; per-pattern severity/confidence; aggregation collapses multiple matches per (channel, threat_type). Custom patterns plug in via `extra_patterns=`. Embedding-similarity + LLM-backed semantic classifier still on the post-0.5.x roadmap. |
+| `CorticalLayer`    |   ✅     |   ✅   | Reasoning conflict detection still rule-based (🟡). Memory provenance still structural (🟡). **Drift: Jensen-Shannon distance with Laplace smoothing**, symmetric and bounded, with a `min_drift_samples` guard so small distributions don't produce noisy verdicts. The legacy `_kl_divergence_approx` is retained as an alias. Semantic reasoning checks via `cortical_llm` are opt-in. |
 | `CorticalLLMLayer` (`cortical_llm.py`) | opt-in | 🧪 | Anthropic-API-backed semantic checks; fail-open on API error. Requires `pip install agentegrity[llm]`. |
 | `GovernanceLayer`  |   ✅     |   ✅   | Real policy engine, `enterprise-default` rule set, custom rule support, audit log with SHA-256 content hash. |
 | `RecoveryLayer`    |   ✅     |   🟡   | Capability declaration check, sustained-degradation detection on score history, attestation-chain continuity. Phase 2 plan: real `Checkpoint` Protocol with file/sqlite/KMS impls, `restore_to(record_id)` round-trip. |
@@ -118,6 +118,6 @@ the repo.
 
 ---
 
-**Last reviewed:** v0.5.3 (2026-04-29). This file is the source of truth
-for "what's done." Update it in the same commit that ships a status
-change.
+**Last reviewed:** v0.5.3 + Phase 2a/2b (2026-04-30). This file is the
+source of truth for "what's done." Update it in the same commit that
+ships a status change.
