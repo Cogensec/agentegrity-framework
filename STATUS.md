@@ -94,7 +94,7 @@ chain.
 | Version-parity gate                  |   ✅   | `scripts/check_versions.py` (Python) + `scripts/check-versions.ts` (TS) wired into CI. |
 | Release workflow                     |   ✅   | `.github/workflows/release.yml` publishes Python wheel + npm matrix. |
 | Conformance test suite (cross-adapter) | ✅ | `tests/test_adapter_conformance.py` runs the same canonical event stream + lifecycle assertions across every shipped adapter (51 tests today; matrix of 9 invariants × 5 adapters + a registry-stability sentinel). New adapters add one line to `ADAPTER_CLASSES` and inherit the entire matrix. |
-| Detection benchmark suite            |   🛠   | Phase 3 plan: nightly run vs PINT / AgentDojo / InjecAgent. |
+| Detection benchmark suite            |   ✅   | `pytest -m benchmark` runs the in-repo synthetic suite (~30 attacks + ~30 benign across 6 attack families) with calibrated thresholds (TPR ≥ 0.95, FPR ≤ 0.05, F1 ≥ 0.95, plus per-family floor: every family must register at least one TP). Loader stubs for PINT / AgentDojo / InjecAgent auto-skip when their `AGENTEGRITY_BENCH_*` env var is unset, so cron can plug in real datasets without touching CI defaults. `scripts/run_benchmarks.py [--all]` prints a markdown report and exits non-zero on regression. Headline calibration: synthetic TPR=1.000, FPR=0.000, F1=1.000 on N=58. |
 | OpenTelemetry instrumentation        |   🛠   | Phase 5 plan. |
 | Prometheus metrics                   |   🛠   | Phase 5 plan. |
 | SLSA provenance + SBOM + sigstore    |   🛠   | Phase 6 plan; provenance was disabled while repo was private and is now eligible to re-enable. |
@@ -118,6 +118,6 @@ the repo.
 
 ---
 
-**Last reviewed:** v0.5.3 + Phase 2a/2b/2c/2d (2026-05-04). This file
-is the source of truth for "what's done." Update it in the same commit
-that ships a status change.
+**Last reviewed:** v0.5.3 + Phase 2a/2b/2c/2d/2e (2026-05-04). This
+file is the source of truth for "what's done." Update it in the same
+commit that ships a status change.

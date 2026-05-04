@@ -89,6 +89,27 @@ in beta until the v1.0 stability criteria documented in
   matrix runs against it automatically. 51 tests; a sentinel test
   fails loudly if the registry size drifts so adapters can't be
   silently dropped.
+- **Detection benchmark suite** (`tests/benchmarks/`,
+  `tests/test_benchmarks.py`, `scripts/run_benchmarks.py`).
+  `pytest -m benchmark` runs the in-repo synthetic suite (~28 attacks
+  + ~30 benign across the six attack families) with calibrated
+  thresholds (TPR ≥ 0.95, FPR ≤ 0.05, F1 ≥ 0.95, plus per-family
+  floor: every family must register at least one TP).
+  `BenchmarkPrompt` / `BenchmarkResult` / `run_suite()` /
+  `format_markdown_report()` are the harness; loader stubs for PINT /
+  AgentDojo / InjecAgent auto-skip when their `AGENTEGRITY_BENCH_*`
+  env var is unset, so a nightly cron can plug in real datasets
+  without changing CI defaults. The benchmark marker is excluded from
+  the default `pytest` invocation via `addopts = "-m 'not benchmark'"`
+  so unit tests stay fast. Calibration baseline:
+  `synthetic_pint_like` TPR=1.000, FPR=0.000, F1=1.000 on N=58.
+- During calibration two regex patterns were tightened to handle
+  realistic attack phrasings: `ignore_your_role` now allows an
+  optional adjective between determiner and noun ("abandon your
+  *assistant* character"); `reveal_system_prompt` now allows an
+  optional `me` after the verb ("show *me* your hidden instructions")
+  and the noun alternation accepts "hidden \\w+" so configuration
+  fishing is captured.
 
 ### Migration
 - Callers that constructed `PropertyWeights` with three keyword
