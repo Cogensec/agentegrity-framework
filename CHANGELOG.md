@@ -53,9 +53,30 @@ in beta until the v1.0 stability criteria documented in
   factory. Custom patterns can be appended via
   `AdversarialLayer(extra_patterns=[...])` or fully replace the
   taxonomy via `AdversarialLayer(patterns=[...])`.
-- 33 new tests covering the regex taxonomy (`test_adversarial_detectors.py`)
-  and the JS-distance drift metric (`test_drift.py`) — symmetry,
-  monotonicity, sample-size guards, and aggregation behaviour.
+- **`Checkpoint` Protocol + `InMemoryCheckpoint` / `FileCheckpoint`
+  (atomic write via tempfile + `os.replace`, path-traversal guard) /
+  `SqliteCheckpoint` (idempotent `CREATE TABLE IF NOT EXISTS`,
+  `:memory:` supported via persistent connection) reference backends**
+  in `agentegrity.layers.checkpoint`.
+- **`RecoveryLayer.snapshot(agent_id, baseline=, metadata=)` and
+  `RecoveryLayer.restore_to(checkpoint_id)`** — round-trip the layer
+  through any conforming backend. Snapshot captures the attestation
+  chain, score history, optional behavioural baseline, and arbitrary
+  metadata; restore preserves original link hashes so
+  `verify_chain()` returns True after a tamper→restore cycle.
+- `RecoveryAssessment` now surfaces `checkpoint_count` and
+  `last_checkpoint_id` for downstream telemetry.
+- `AttestationRecord.from_dict` + `AttestationChain.from_records` /
+  `AttestationChain.from_dict_list` / `AttestationChain.to_records_dict`
+  for lossless chain serialisation.
+- An attached `Checkpoint` backend is now treated as a synthetic
+  `checkpoint` recovery capability so the score reflects operational
+  reality, not just the agent profile's declarations.
+- 76 new tests covering the regex taxonomy
+  (`test_adversarial_detectors.py`), the JS-distance drift metric
+  (`test_drift.py`), checkpoint backend round-trips
+  (`test_checkpoint.py`), and the tamper→restore cycle
+  (`test_recovery_restore.py`).
 
 ### Migration
 - Callers that constructed `PropertyWeights` with three keyword

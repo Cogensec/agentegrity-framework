@@ -41,7 +41,7 @@ this document is the operational version of it.
 | `CorticalLayer`    |   ✅     |   ✅   | Reasoning conflict detection still rule-based (🟡). Memory provenance still structural (🟡). **Drift: Jensen-Shannon distance with Laplace smoothing**, symmetric and bounded, with a `min_drift_samples` guard so small distributions don't produce noisy verdicts. The legacy `_kl_divergence_approx` is retained as an alias. Semantic reasoning checks via `cortical_llm` are opt-in. |
 | `CorticalLLMLayer` (`cortical_llm.py`) | opt-in | 🧪 | Anthropic-API-backed semantic checks; fail-open on API error. Requires `pip install agentegrity[llm]`. |
 | `GovernanceLayer`  |   ✅     |   ✅   | Real policy engine, `enterprise-default` rule set, custom rule support, audit log with SHA-256 content hash. |
-| `RecoveryLayer`    |   ✅     |   🟡   | Capability declaration check, sustained-degradation detection on score history, attestation-chain continuity. Phase 2 plan: real `Checkpoint` Protocol with file/sqlite/KMS impls, `restore_to(record_id)` round-trip. |
+| `RecoveryLayer`    |   ✅     |   ✅   | Capability declaration check, sustained-degradation detection on score history, attestation-chain continuity, **and a real `Checkpoint` Protocol with `InMemoryCheckpoint` / `FileCheckpoint` (atomic write) / `SqliteCheckpoint` (idempotent schema) reference backends**. `RecoveryLayer.snapshot()` persists chain + score history + baseline + metadata; `restore_to(checkpoint_id)` rebuilds the chain (preserving original link hashes so `verify_chain()` returns True post-restore). External backends (S3, Redis, KMS-wrapped) are pluggable by satisfying the four-method Protocol. |
 
 ## Python Adapters (`src/agentegrity/<framework>.py`)
 
@@ -118,6 +118,6 @@ the repo.
 
 ---
 
-**Last reviewed:** v0.5.3 + Phase 2a/2b (2026-04-30). This file is the
-source of truth for "what's done." Update it in the same commit that
-ships a status change.
+**Last reviewed:** v0.5.3 + Phase 2a/2b/2c (2026-05-04). This file is
+the source of truth for "what's done." Update it in the same commit
+that ships a status change.

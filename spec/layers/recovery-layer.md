@@ -68,8 +68,49 @@ score scales with the number of capabilities declared:
 | 1                    | 0.70  |
 | 0                    | 0.40  |
 
-This is a declaration check, not a runtime test. v0.6.0 will add a
-runtime checkpoint Protocol so capabilities can be exercised end-to-end.
+A `Checkpoint` backend attached via `RecoveryLayer(checkpoint=...)` is
+treated as a synthetic `checkpoint` capability for scoring purposes —
+operational evidence supersedes profile declaration when the
+declaration is missing.
+
+### Checkpoint Round-Trip
+
+The recovery layer's `snapshot()` / `restore_to()` methods give the
+agent a real rollback primitive, not just the ability to *detect*
+compromise:
+
+1. `snapshot(agent_id, baseline=None, metadata=None) -> str` — persist
+   the chain (every record dict), the rolling score history, an
+   optional behavioural baseline, and arbitrary metadata via the
+   attached :class:`Checkpoint`. Returns the canonical id.
+2. `restore_to(checkpoint_id) -> CheckpointSnapshot` — rebuild the
+   chain from the snapshot's record dicts (preserving original
+   `chain_previous` link hashes so `verify_chain()` returns True
+   post-restore) and replace `_score_history` with the snapshot's
+   history. After a tamper→restore cycle the layer reports
+   `chain_intact == True` and `action != "escalate"` again.
+
+The `Checkpoint` Protocol is four methods:
+
+```python
+class Checkpoint(Protocol):
+    def save(self, snapshot: CheckpointSnapshot) -> str: ...
+    def load(self, checkpoint_id: str) -> CheckpointSnapshot | None: ...
+    def list_ids(self) -> list[str]: ...
+    def latest(self) -> CheckpointSnapshot | None: ...
+```
+
+Reference implementations:
+
+| Backend                | Notes |
+|------------------------|-------|
+| `InMemoryCheckpoint`   | Process-local dict, insertion order preserved. Useful for tests and short-lived agents. |
+| `FileCheckpoint(root)` | One `<id>.json` file per snapshot under `root`. Atomic writes (temp file + `os.replace`); path-traversal guard on the id; pretty-printed JSON for jq/grep. |
+| `SqliteCheckpoint(path)` | Single `checkpoints` table with payload as JSON. Idempotent `CREATE TABLE IF NOT EXISTS`. `":memory:"` supported via a persistent connection. |
+
+External backends (S3, Redis, KMS-wrapped storage) are pluggable —
+implement the four-method Protocol and pass the instance to
+`RecoveryLayer(checkpoint=...)`.
 
 ### Attestation Chain Continuity
 
@@ -117,7 +158,12 @@ A conforming implementation MUST:
    `recovery_score` key in `details` so the evaluator's
    `_compute_property_scores` can pick it up.
 4. Map a tampered chain to `action == "escalate"`.
+5. When a `Checkpoint` backend is attached, expose `snapshot(...)` and
+   `restore_to(checkpoint_id)` such that the post-restore chain
+   verifies under `verify_chain()` (i.e., link hashes are preserved
+   verbatim, not re-derived).
 
 A conforming implementation SHOULD also surface `sustained_degradation`,
-`chain_intact`, `recovery_capable`, and `recovery_capabilities_present` in
-its result `details` for downstream telemetry.
+`chain_intact`, `recovery_capable`, `recovery_capabilities_present`,
+`checkpoint_count`, and `last_checkpoint_id` in its result `details`
+for downstream telemetry.

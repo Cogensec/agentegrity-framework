@@ -23,9 +23,14 @@ from agentegrity.langchain import instrument_graph as langchain_instrument_graph
 from agentegrity.langchain import report as langchain_report
 from agentegrity.layers import (
     AdversarialLayer,
+    Checkpoint,
+    CheckpointSnapshot,
     CorticalLayer,
+    FileCheckpoint,
     GovernanceLayer,
+    InMemoryCheckpoint,
     RecoveryLayer,
+    SqliteCheckpoint,
     default_layers,
 )
 from agentegrity.openai_agents import report as openai_agents_report
@@ -51,6 +56,11 @@ __all__ = [
     "GovernanceLayer",
     "RecoveryLayer",
     "default_layers",
+    "Checkpoint",
+    "CheckpointSnapshot",
+    "InMemoryCheckpoint",
+    "FileCheckpoint",
+    "SqliteCheckpoint",
     "claude_hooks",
     "claude_report",
     "langchain_instrument_chain",
