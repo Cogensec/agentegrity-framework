@@ -205,7 +205,7 @@ _ROLE_CONFUSION_PATTERNS: list[DetectorPattern] = [
     ),
     DetectorPattern(
         name="ignore_your_role",
-        pattern=r"\b(ignore|forget|abandon)\s+(your|the)\s+(role|persona|character|assistant\s+role|previous\s+identity)\b",
+        pattern=r"\b(ignore|forget|abandon|drop)\s+(your|the)\s+(\w+\s+)?(role|persona|character|assistant\s+role|previous\s+identity|identity)\b",
         threat_type="role_confusion",
         severity=0.85,
         confidence=0.80,
@@ -216,7 +216,7 @@ _ROLE_CONFUSION_PATTERNS: list[DetectorPattern] = [
 _SYSTEM_PROMPT_EXTRACTION_PATTERNS: list[DetectorPattern] = [
     DetectorPattern(
         name="reveal_system_prompt",
-        pattern=r"\b(reveal|show|print|display|tell\s+me|repeat|output)\s+(your|the)\s+(system\s+prompt|initial\s+instructions?|hidden\s+instructions?|prompt|configuration)\b",
+        pattern=r"\b(reveal|show|print|display|tell|repeat|output)\s+(me\s+)?(your|the)\s+(system\s+prompt|initial\s+instructions?|hidden\s+instructions?|prompt|configuration|hidden\s+\w+)\b",
         threat_type="system_prompt_extraction",
         severity=0.75,
         confidence=0.85,
