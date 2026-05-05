@@ -23,13 +23,17 @@ from agentegrity.langchain import instrument_graph as langchain_instrument_graph
 from agentegrity.langchain import report as langchain_report
 from agentegrity.layers import (
     AdversarialLayer,
+    BaselineStore,
     Checkpoint,
     CheckpointSnapshot,
     CorticalLayer,
+    FileBaselineStore,
     FileCheckpoint,
     GovernanceLayer,
+    InMemoryBaselineStore,
     InMemoryCheckpoint,
     RecoveryLayer,
+    SqliteBaselineStore,
     SqliteCheckpoint,
     default_layers,
 )
@@ -61,6 +65,10 @@ __all__ = [
     "InMemoryCheckpoint",
     "FileCheckpoint",
     "SqliteCheckpoint",
+    "BaselineStore",
+    "InMemoryBaselineStore",
+    "FileBaselineStore",
+    "SqliteBaselineStore",
     "claude_hooks",
     "claude_report",
     "langchain_instrument_chain",
