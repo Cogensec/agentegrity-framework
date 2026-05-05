@@ -77,6 +77,43 @@ in beta until the v1.0 stability criteria documented in
   (`test_drift.py`), checkpoint backend round-trips
   (`test_checkpoint.py`), and the tamper→restore cycle
   (`test_recovery_restore.py`).
+- **`BaselineStore` Protocol + `InMemoryBaselineStore` /
+  `FileBaselineStore` (atomic writes via tempfile + `os.replace`,
+  path-traversal guard) / `SqliteBaselineStore` (idempotent
+  `CREATE TABLE IF NOT EXISTS`, `:memory:` via persistent connection)**
+  in `agentegrity.layers.baseline_store`. Mirrors the Phase 2c
+  `Checkpoint` Protocol pattern so behavioural baselines survive
+  process restarts.
+- **`CorticalLayer(baseline_store=...)`** wires the new persistence
+  surface: on first `evaluate` for an agent the layer reads through
+  to the store; `update_baseline` writes through after each update.
+  An explicit `baseline=` argument still wins (rollback-to-known-good
+  story).
+- **Adversarial layer scans two new channels**: `retrieved_documents`
+  (RAG poisoning) and `peer_messages` (multi-agent injection).
+  Loose schema accepts `{content, text, body}` / `{content, text, message}`.
+  Same regex taxonomy applies, same per-channel threat aggregation.
+- **Nightly `benchmark` workflow** — daily 04:17 UTC cron + on
+  workflow_dispatch. Runs `pytest -m benchmark` and uploads
+  `bench-report.md` as a 30-day artifact. External datasets plug in
+  via `AGENTEGRITY_BENCH_*` repository variables.
+- **Python coverage gate at 85% line+branch**, currently 86.71%.
+  `pytest-cov` + `coverage[toml]` added to `[dev]` extras; `[tool.coverage]`
+  block in `pyproject.toml`; new `coverage` CI job uploads
+  `coverage.xml` for 14 days. CLI `__main__.py` is omitted from
+  coverage by intent (verified manually via `python -m agentegrity`).
+- **TypeScript coverage gate at 80% lines / 70% functions**,
+  currently 89.99% / 83.40%. New `clients/typescript/scripts/check-coverage.ts`
+  parses `bun test --coverage` text output and exits non-zero on
+  threshold breach (works around bun 1.3.11's broken
+  `coverageThreshold` enforcement). Wired into the CI typescript job.
+- **Real-world detection benchmark numbers published in
+  `STATUS.md`** — InjecAgent dh+ds combined: TPR=0.000, FPR=0.000 on
+  N=2,108 (regex taxonomy targets pattern-style injections; InjecAgent
+  attacks are action-oriented and require the unfinished LLM
+  classifier). The synthetic suite still serves as the calibration
+  regression gate. `scripts/fetch_benchmark_datasets.sh` automates
+  the InjecAgent fetch; data files are gitignored.
 - **Cross-adapter conformance suite** (`test_adapter_conformance.py`).
   Same canonical event stream is driven through every shipped Python
   adapter (Claude / LangChain / OpenAI Agents / CrewAI / Google ADK)
