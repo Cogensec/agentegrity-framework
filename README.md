@@ -2,7 +2,7 @@
   <img src="assets/logo.png" alt="Agentegrity" height="120"/>
 </p>
 
-# Agentegrity Framework
+# Agentegrity
 <p align="center">
 <a href="https://npmjs.com/package/@agentegrity/client"><img src="https://img.shields.io/npm/v/@agentegrity/client" alt="npm"></a>
 <a href="https://npmjs.com/package/@agentegrity/client"><img src="https://img.shields.io/npm/dm/@agentegrity/client" alt="npm"></a>
