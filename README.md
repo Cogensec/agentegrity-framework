@@ -10,13 +10,7 @@
   <img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache 2.0"></a>
 <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python 3.10+"></a>
 <a href="pyproject.toml"><img src="https://img.shields.io/badge/library-v0.6.0-green.svg" alt="Library Version"></a>
-<a href="spec/SPECIFICATION.md"><img src="https://img.shields.io/badge/spec-v1.0--draft-blue.svg" alt="Spec Version"></a>
-  
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Library Version](https://img.shields.io/badge/library-v0.6.0-green.svg)](pyproject.toml)
-[![Spec Version](https://img.shields.io/badge/spec-v1.0--draft-blue.svg)](spec/SPECIFICATION.md)
-
+<a href="spec/SPECIFICATION.md"><img src="https://img.shields.io/badge/spec-v1.0--draft-blue.svg" alt="Spec Version"></a
 </p>
 
 **Building AI agents capable of securing themselves.**
