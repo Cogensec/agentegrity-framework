@@ -113,7 +113,12 @@ class AutoGenAdapter(_BaseAdapter):
 
         adapter = self
 
-        class _AgentegritySpanProcessor(_SpanProcessor):
+        # The lazy import above makes _SpanProcessor a real class at
+        # runtime, but mypy can't see that when opentelemetry-sdk isn't
+        # installed in the type-check environment (CI's [dev,crypto]
+        # install). The misc-ignore handles that case; unused-ignore
+        # silences the same comment when opentelemetry IS installed.
+        class _AgentegritySpanProcessor(_SpanProcessor):  # type: ignore[misc, unused-ignore]
             def on_start(
                 self, span: ReadableSpan, parent_context: Any = None
             ) -> None:
