@@ -42,6 +42,7 @@ import pytest
 from agentegrity.adapters.agno import AgnoAdapter
 from agentegrity.adapters.autogen import AutoGenAdapter
 from agentegrity.adapters.base import _BaseAdapter
+from agentegrity.adapters.bedrock_agents import BedrockAgentsAdapter
 from agentegrity.adapters.claude import ClaudeAdapter
 from agentegrity.adapters.crewai import CrewAIAdapter
 from agentegrity.adapters.google_adk import GoogleADKAdapter
@@ -64,6 +65,7 @@ ADAPTER_CLASSES: list[tuple[str, type[_BaseAdapter]]] = [
     ("google_adk", GoogleADKAdapter),
     ("autogen", AutoGenAdapter),
     ("agno", AgnoAdapter),
+    ("bedrock_agents", BedrockAgentsAdapter),
 ]
 
 
@@ -316,6 +318,7 @@ _EXPECTED_ADAPTERS = {
     "google_adk",
     "autogen",
     "agno",
+    "bedrock_agents",
 }
 
 

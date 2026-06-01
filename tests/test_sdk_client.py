@@ -62,6 +62,7 @@ def test_create_adapter_unknown_name_raises_with_valid_options() -> None:
         ("google_adk", "GoogleADKAdapter"),
         ("autogen", "AutoGenAdapter"),
         ("agno", "AgnoAdapter"),
+        ("bedrock_agents", "BedrockAgentsAdapter"),
     ],
 )
 def test_create_adapter_resolves_every_shipped_name(

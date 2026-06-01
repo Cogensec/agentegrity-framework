@@ -31,6 +31,7 @@ _ADAPTER_REGISTRY: dict[str, tuple[str, str]] = {
     "google_adk": ("agentegrity.adapters.google_adk", "GoogleADKAdapter"),
     "autogen": ("agentegrity.adapters.autogen", "AutoGenAdapter"),
     "agno": ("agentegrity.adapters.agno", "AgnoAdapter"),
+    "bedrock_agents": ("agentegrity.adapters.bedrock_agents", "BedrockAgentsAdapter"),
 }
 
 

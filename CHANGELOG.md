@@ -11,6 +11,40 @@ in beta until the v1.0 stability criteria documented in
 ## [Unreleased]
 
 ### Added
+- **AWS Bedrock Agents adapter (Python).** `pip install
+  agentegrity[bedrock-agents]`. One adapter, two surfaces:
+
+  *Strands SDK* (`instrument_strands(agent)`). Registers a typed
+  `HookProvider` on a Strands `Agent`: `BeforeInvocationEvent` →
+  `user_prompt_submit`, `AfterInvocationEvent` → `stop`,
+  `BeforeToolCallEvent` → `pre_tool_use`, `AfterToolCallEvent` →
+  `post_tool_use` (or `post_tool_use_failure` when `event.exception is
+  not None`). Tool callbacks are registered as `async` so the adapter
+  can `await on_event(...)`, inspect the block decision the
+  `_handle_pre_tool_use` returns, and write `event.cancel_tool=reason`
+  — **real enforcement**, the first adapter in the v0.7 batch where
+  `enforce=True` actually denies a tool call rather than just
+  recording the decision.
+
+  *boto3* (`wrap_client(client)`). Patches `bedrock-agent-runtime`'s
+  `invoke_agent` to force `enableTrace=True` (override via
+  `force_trace=False`), then wraps the returned `EventStream`. TracePart
+  variants map onto canonical events:
+  `orchestrationTrace.invocationInput.actionGroupInvocationInput` →
+  `pre_tool_use`, `orchestrationTrace.observation.actionGroupInvocationOutput`
+  → `post_tool_use`, `agentCollaboratorInvocation{Input,Output}` →
+  `subagent_{start,stop}`, `failureTrace` → `post_tool_use_failure`.
+  The caller's `chunk` / `files` / `returnControl` / exception
+  variants pass through unchanged. Observation-only: trace events
+  arrive after the tool ran, so `enforce=True` on this surface records
+  the block decision but cannot prevent execution — the adapter
+  warns at `wrap_client` time when both are set.
+
+  Partial-stream safety: the wrapper's iterator runs in a generator's
+  `finally` block, so a caller bailing out mid-iteration still fires
+  `stop` (with `reason="stream_terminated_early"`) and closes the
+  session in the attestation chain.
+
 - **Agno adapter (Python).** `pip install agentegrity[agno]`. Targets
   Agno 2.x. Hooks into the three Agno hook surfaces on both `Agent`
   and `Team`: `pre_hooks` → `user_prompt_submit`, `post_hooks` →
